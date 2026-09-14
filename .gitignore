@@ -1,0 +1,14 @@
+# Internal reference docs — not part of the shipped project
+docs/panduan-infra-pelatihan-web-smp-versi-siswa.md
+docs/PHP-404-extended-path-bug.md
+
+# Local data (children's published pages) — never commit real submissions
+/data/karya/
+
+# Env / secrets
+.env
+.env.*
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
