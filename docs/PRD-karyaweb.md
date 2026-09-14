@@ -1,6 +1,8 @@
 # PRD — KaryaWeb (Bagian 5: Aplikasi Halaman Anak)
 
-Status: draft, belum diimplementasikan. Referensi utama:
+Status: M1 + M2 sudah diimplementasikan dan diuji manual di phpBro lokal
+(`karya.lokal:8080`) — lihat `index.php` + `app/`. M3 (Bagian 6/7/8 lanjutan)
+belum dikerjakan. Referensi utama:
 `docs/panduan-infra-pelatihan-web-smp-versi-siswa.md` (tidak di-commit ke repo
 ini, lihat `.gitignore` — dokumen internal/rujukan, bukan bagian dari aplikasi
 yang di-ship).
@@ -128,32 +130,41 @@ review sebelum dipakai anak-anak:
 - **Tanpa database** — seluruh state ada di filesystem (`/data/karya`, atau
   padanannya saat dev, lihat Open Question #4).
 
-## 8. Open questions — perlu diputuskan sebelum/​saat mulai coding
+## 8. Open questions — keputusan dan status
 
-1. **Model eksekusi PHP lokal vs kontrak "port 3000".** Site phpBro
-   `karya.lokal` saat ini — apakah nginx-nya sudah (atau bisa) diatur supaya
-   semua path (`/andi`, `/bikin`, `/api/terbit`, dst.) di-*rewrite* ke satu
-   front controller (`index.php`)? Atau tiap route harus jadi file `.php`
-   fisik (`/bikin/index.php`, `/api/terbit.php`, dst.) karena kita tidak
-   mengatur konfigurasi nginx phpBro secara langsung? Ini menentukan struktur
-   folder aplikasi dari awal.
-2. **Rate limiting tanpa DB/Redis.** Perlu file-based (lock file + timestamp
-   per slug, counter global dengan `flock`) supaya aman dari race condition
-   antar proses PHP-CGI yang terpisah-pisah (tidak ada shared memory antar
-   request seperti di model Node long-running).
-3. **Isi 3 blok pertama.** Kandidat dari dokumen sumber: mode gelap, latar
-   gradasi, efek hover, kartu lagu favorit, daftar "3 hal yang aku suka",
-   tombol sosial media. Perlu pilih 3, atau saya usulkan default dan
-   tunjukkan untuk direview.
-4. **Lokasi folder data saat dev.** `/data/karya` di dokumen sumber adalah
-   path absolut Linux untuk server produksi. Untuk dev Windows lewat phpBro,
-   usul: env var (`KARYA_DATA_DIR`) dengan default relatif
-   `<repo>/data/karya`, supaya kode yang sama jalan di kedua tempat.
-5. **Siapa yang membuat folder `<slug>` baru.** Alur asli (Bagian 7)
-   mengasumsikan 28 folder sudah disiapkan sebelum sesi lewat skrip CSV. Untuk
-   dev/testing sebelum skrip itu ada — apakah `/api/terbit` boleh membuat
-   slug baru kalau belum ada (mis. untuk data uji), atau strictly 404 kalau
-   slug belum pernah di-seed (mengikuti model produksi apa adanya)?
+1. **Model eksekusi PHP lokal vs kontrak "port 3000".** ✅ Diputuskan +
+   diverifikasi empiris: nginx phpBro untuk `karya.lokal` sudah fallback
+   path yang tidak cocok file nyata ke `index.php` (dites langsung dengan
+   `curl` ke path acak — 200, bukan 404 nginx). Jadi satu front controller
+   (`index.php`) di root menangani semua route (`/<slug>`, `/bikin`,
+   `/api/buka`, `/api/terbit`) lewat `REQUEST_URI`, tanpa perlu ubah config
+   nginx. Kontrak "listen di port 3000" (Bagian 6) tetap relevan untuk
+   Docker prod nanti — bisa dipenuhi dengan `php -S 0.0.0.0:3000 index.php`
+   atau nginx+php-fpm di dalam image; front controller yang sama dipakai di
+   kedua model, jadi tidak ada perubahan kode saat dockerize.
+2. **Rate limiting tanpa DB/Redis.** ✅ Diimplementasikan — file lock per
+   slug (`_ratelimit/slug-<slug>.lock`) + counter global sliding-window
+   (`_ratelimit/global.log`), keduanya pakai `flock()`. Diuji: publish kedua
+   dalam <3 detik pada slug yang sama → 429.
+3. **Isi 3 blok pertama.** ✅ Draf dipilih dan diuji lewat browser: "3 Hal
+   yang Aku Suka" (`tiga-hal`), "Lagu Favorit" (`lagu-favorit`), "Media
+   Sosial" (`sosial`, Instagram/TikTok username saja). Lihat `app/blocks.php`.
+   Masih bisa diganti/ditambah — ini bukan keputusan final desain, hanya
+   cukup untuk M2 berfungsi end-to-end.
+4. **Lokasi folder data saat dev.** ✅ Diputuskan: default ke folder saudara
+   di luar docroot, `<sibling>/workshop-spmb-data/karya` (bukan
+   `<repo>/data/karya`, supaya tidak pernah web-accessible terlepas dari
+   konfigurasi nginx apa pun), override via env `KARYA_DATA_DIR`.
+5. **Siapa yang membuat folder `<slug>` baru.** ✅ Diputuskan: `/api/terbit`
+   *dan* `/api/buka` (supaya alur editor UI konsisten) mengizinkan slug baru
+   dev/testing — hanya jika kode berformat valid (6 karakter, tanpa
+   `0 O 1 l I`). Ini murni kenyamanan sebelum skrip seeding Bagian 7 ada;
+   **residual risk**: karena itu, `/api/terbit` ke slug yang belum ada bisa
+   dibedakan dari kode salah di slug yang sudah ada (422 vs 401) — celah kecil
+   yang membocorkan status "slug sudah diklaim atau belum". Diterima untuk
+   fase dev; sebelum sesi nyata, matikan auto-create ini (atau pastikan semua
+   slug sudah di-seed lebih dulu lewat Bagian 7) supaya perilakunya kembali
+   strictly 404 untuk slug tak dikenal.
 
 ## 9. Milestone
 
