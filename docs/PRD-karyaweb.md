@@ -169,10 +169,39 @@ review sebelum dipakai anak-anak:
 ## 9. Milestone
 
 - **M1** — routing dasar + penyimpanan file + halaman editor jalan di phpBro
-  lokal, tanpa blok (fields saja).
+  lokal, tanpa blok (fields saja). ✅ Selesai.
 - **M2** — 3 blok pertama + seluruh checklist keamanan §6 lolos self-review.
-- **M3 (fase lanjut, di luar PR ini)** — dockerize (Bagian 6), skrip seed CSV
-  (Bagian 7), blok tambahan (Bagian 8).
+  ✅ Selesai.
+- **M3a (Bagian 6 — dockerize)** — ✅ `Dockerfile`, `.dockerignore`,
+  `docker-compose.yml` ditulis. Dua penyimpangan sengaja dari template
+  dokumen sumber:
+  - `build: .` di compose, bukan image `ghcr.io/<akun>/karyaweb:latest` —
+    belum ada pipeline CI yang publish ke registry, dan Dokploy bisa build
+    langsung dari repo yang sudah di-push ke GitHub/Bitbucket.
+  - `HEALTHCHECK` eksplisit di Dockerfile (pakai `php -r` + `file_get_contents`,
+    tanpa perlu install curl/wget di image alpine) — langsung mengantisipasi
+    jebakan yang disebut di Bagian 10 §3 dokumen sumber ("healthcheck gagal →
+    Traefik diam-diam tidak membuat rute, tanpa pesan error").
+
+  Diuji lokal (bukan lewat Docker — **Docker tidak terpasang di mesin dev
+  ini**, jadi build image itu sendiri belum pernah dijalankan/divalidasi):
+  perintah persis dari `CMD` (`php -S 0.0.0.0:<port> index.php` dengan
+  `KARYA_DATA_DIR` dan `PHP_CLI_SERVER_WORKERS=4`) dijalankan langsung via PHP
+  CLI lokal (PHP 8.3, bukan 8.4 — tidak ada biner 8.4 di PATH mesin ini) dan
+  publish/view/path-traversal semua lolos. Dua hal yang **belum** bisa
+  diverifikasi dari mesin dev ini:
+  - `PHP_CLI_SERVER_WORKERS` butuh `fork()`, tidak tersedia di Windows ("forking
+    is not supported on this platform" muncul di log lokal) — jadi konkurensi
+    multi-worker baru benar-benar teruji begitu container Linux-nya jalan.
+  - Build image itu sendiri (`docker build`) belum pernah dicoba sama sekali.
+
+  **Belum dikerjakan**: apply/deploy nyata ke Dokploy (`dokploy.labpplg.web.id`)
+  — sesi ini tidak punya akses live ke server lab (tidak ada kredensial
+  Dokploy, tunnel SSH `ssh.labpplg.web.id` via cloudflared belum dicoba/
+  diverifikasi). Langkah apply di panel Dokploy dilakukan manual oleh
+  pengguna.
+- **M3b (fase lanjut, di luar PR ini)** — skrip seed CSV (Bagian 7), blok
+  tambahan (Bagian 8).
 
 ## 10. Referensi
 

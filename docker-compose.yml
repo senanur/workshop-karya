@@ -1,0 +1,24 @@
+services:
+  karyaweb:
+    build: .
+    restart: unless-stopped
+    environment:
+      # Matches the volume mount below — without this, the app would fall
+      # back to its dev-time default (a sibling folder outside any volume)
+      # and every publish would vanish on container recreate.
+      - KARYA_DATA_DIR=/data/karya
+    volumes:
+      - /data/karya:/data/karya
+    networks:
+      - dokploy-network
+      - default
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.karyaweb.rule=Host(`karya.labpplg.web.id`)
+      - traefik.http.routers.karyaweb.entrypoints=web
+      - traefik.http.services.karyaweb.loadbalancer.server.port=3000
+
+networks:
+  dokploy-network:
+    external: true
