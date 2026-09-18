@@ -38,7 +38,7 @@ if ($fh === false) {
     exit(1);
 }
 
-$header = fgetcsv($fh);
+$header = fgetcsv($fh, escape: '');
 if (!is_array($header)) {
     fwrite(STDERR, "CSV kosong.\n");
     exit(1);
@@ -82,7 +82,7 @@ $dibuat = []; // sekolahSlug => list of ['nama'=>, 'kelas'=>, 'slug'=>, 'kode'=>
 $dilewati = 0;
 $baris = 1;
 
-while (($row = fgetcsv($fh)) !== false) {
+while (($row = fgetcsv($fh, escape: '')) !== false) {
     $baris++;
     $nama = trim((string) ($row[$kolom['nama']] ?? ''));
     $kelas = trim((string) ($row[$kolom['kelas']] ?? ''));
