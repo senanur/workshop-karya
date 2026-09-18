@@ -32,6 +32,16 @@ function karya_gaya_path(string $slug): string
     return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'gaya.css';
 }
 
+function karya_versi_dir(string $slug): string
+{
+    return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'versi';
+}
+
+function karya_foto_dir(string $slug): string
+{
+    return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'foto';
+}
+
 function karya_load_text(string $path): ?string
 {
     if (!is_file($path)) {
@@ -92,4 +102,83 @@ function karya_save_meta(string $slug, array $meta): void
 function karya_publish_html(string $slug, string $html): void
 {
     karya_save_text_atomic(karya_index_path($slug), $html);
+}
+
+// A version id is the publish timestamp: sortable, human-readable on disk, and
+// collision-free per child because publishing is rate-limited to 1/3s per slug.
+function karya_versi_id_is_valid(string $id): bool
+{
+    return (bool) preg_match('/^\d{8}-\d{6}$/', $id);
+}
+
+// Keeps the last KARYA_MAX_VERSI published snapshots, newest kept, oldest
+// pruned. Stores the sanitized text, i.e. exactly what was published.
+function karya_save_versi(string $slug, string $isi, string $gaya): void
+{
+    $dir = karya_versi_dir($slug);
+    $id = gmdate('Ymd-His');
+
+    karya_save_text_atomic($dir . DIRECTORY_SEPARATOR . $id . '-isi.html', $isi);
+    karya_save_text_atomic($dir . DIRECTORY_SEPARATOR . $id . '-gaya.css', $gaya);
+
+    $ids = karya_versi_ids($slug);
+    foreach (array_slice($ids, KARYA_MAX_VERSI) as $lama) {
+        @unlink($dir . DIRECTORY_SEPARATOR . $lama . '-isi.html');
+        @unlink($dir . DIRECTORY_SEPARATOR . $lama . '-gaya.css');
+    }
+}
+
+/** @return string[] version ids, newest first */
+function karya_versi_ids(string $slug): array
+{
+    $dir = karya_versi_dir($slug);
+    if (!is_dir($dir)) {
+        return [];
+    }
+
+    $ids = [];
+    foreach ((array) scandir($dir) as $nama) {
+        if (is_string($nama) && preg_match('/^(\d{8}-\d{6})-isi\.html$/', $nama, $m)) {
+            $ids[] = $m[1];
+        }
+    }
+
+    rsort($ids); // ids are zero-padded timestamps, so string sort is time sort
+
+    return $ids;
+}
+
+/** @return list<array{id: string, waktu: string}> newest first, for the editor list */
+function karya_list_versi(string $slug): array
+{
+    $daftar = [];
+    foreach (array_slice(karya_versi_ids($slug), 0, KARYA_MAX_VERSI) as $id) {
+        // 20260918-074512 -> 2026-09-18T07:45:12Z, so the browser can format it
+        $daftar[] = [
+            'id' => $id,
+            'waktu' => substr($id, 0, 4) . '-' . substr($id, 4, 2) . '-' . substr($id, 6, 2)
+                . 'T' . substr($id, 9, 2) . ':' . substr($id, 11, 2) . ':' . substr($id, 13, 2) . 'Z',
+        ];
+    }
+
+    return $daftar;
+}
+
+/** @return array{isi: string, gaya: string}|null */
+function karya_load_versi(string $slug, string $id): ?array
+{
+    if (!karya_versi_id_is_valid($id)) {
+        return null;
+    }
+
+    $dir = karya_versi_dir($slug);
+    $isi = karya_load_text($dir . DIRECTORY_SEPARATOR . $id . '-isi.html');
+    if ($isi === null) {
+        return null;
+    }
+
+    return [
+        'isi' => $isi,
+        'gaya' => karya_load_text($dir . DIRECTORY_SEPARATOR . $id . '-gaya.css') ?? '',
+    ];
 }

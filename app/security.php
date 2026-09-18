@@ -86,6 +86,10 @@ function karya_send_app_page_headers(): void
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: no-referrer');
     header('X-Robots-Tag: noindex');
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src 'self'");
+    // blob: is needed because the editor reads the photo a child picked via
+    // URL.createObjectURL() to downscale it on a canvas before upload; without
+    // it the image load fails silently and the upload never starts. This is
+    // the app's own UI only — the public child page CSP stays img-src 'self'.
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; frame-src 'self'");
     header('Content-Type: text/html; charset=utf-8');
 }

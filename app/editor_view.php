@@ -120,10 +120,6 @@ textarea{flex:1;min-height:0;width:100%;resize:none;border:0;margin:0;padding:12
   font-family:"Cascadia Code",Consolas,"Courier New",monospace;font-size:15px;line-height:1.5;tab-size:2;white-space:pre;overflow:auto}
 .warn{display:flex;gap:10px;align-items:center;padding:7px 14px;background:var(--warn);color:var(--warntext);font-size:.9rem;border-top:1px solid var(--line)}
 .warn[hidden]{display:none}
-.peringatan{padding:10px 14px;background:var(--warn);color:var(--warntext);font-size:.9rem;border-bottom:1px solid var(--line)}
-.peringatan[hidden]{display:none}
-.peringatan ul{margin:.4rem 0 0;padding-left:1.2rem}
-.peringatan button{border-color:var(--warntext);color:var(--warntext);margin-top:.5rem}
 .prev{display:flex;flex-direction:column;min-height:0;background:var(--mist)}
 .prev .lbl{font-size:.8rem;color:var(--muted);padding:6px 12px;text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between}
 iframe{flex:1;width:100%;border:0;background:#fff}
@@ -150,6 +146,21 @@ iframe{flex:1;width:100%;border:0;background:#fff}
 .gate-card button{margin-top:1.1rem;width:100%;padding:.65rem;border:none;border-radius:999px;background:var(--cherry);color:#fff;font-size:1rem;font-weight:700}
 .gate-err{color:var(--cherry);font-size:.85rem;margin:.75rem 0 0}
 .gate-err[hidden]{display:none}
+.hasil{position:fixed;inset:0;background:rgba(30,36,64,.55);display:flex;align-items:center;justify-content:center;padding:1.25rem;z-index:40;overflow:auto}
+.hasil[hidden]{display:none}
+.hasil-card{background:var(--paper);color:var(--text);border-radius:16px;padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.25);text-align:center}
+.hasil-card h1{font-size:1.2rem;margin:0 0 .5rem;color:var(--cherry)}
+.hasil-url{font-family:Consolas,monospace;font-size:.95rem;margin:0 0 1rem;word-break:break-all}
+.qr{display:flex;justify-content:center;margin:0 0 .6rem}
+.qr svg{width:180px;height:180px;background:#fff;border-radius:8px;padding:8px}
+.hasil-hint{font-size:.8rem;color:var(--muted);margin:0 0 1rem}
+.hasil-tombol{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.hasil-tombol button,.hasil-tombol .tombol-buka{border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:.5rem 1rem;font:inherit;cursor:pointer;text-decoration:none}
+.hasil-tombol button:hover,.hasil-tombol .tombol-buka:hover{background:var(--mist)}
+.hasil-peringatan{margin-top:1rem;padding:.7rem .9rem;background:var(--warn);color:var(--warntext);border-radius:8px;font-size:.85rem;text-align:left}
+.hasil-peringatan[hidden]{display:none}
+.hasil-peringatan ul{margin:.4rem 0 0;padding-left:1.2rem}
+.hasil-tutup{margin-top:1.2rem;width:100%;padding:.6rem;border:none;border-radius:999px;background:var(--cherry);color:#fff;font-size:1rem;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
@@ -168,13 +179,11 @@ iframe{flex:1;width:100%;border:0;background:#fff}
     <option value="F">F · Hitung mundur</option>
     <option value="G">G · Hujan emoji</option>
   </select>
+  <select id="pilihVersi" aria-label="Versi tersimpan" hidden>
+    <option value="">Versi tersimpan ▾</option>
+  </select>
   <button id="btnReset">Kembalikan ke contoh</button>
   <button class="pub" id="btnTerbit">Terbitkan</button>
-</div>
-<div class="peringatan" id="peringatanPanel" hidden>
-  <div>⚠ Ada bagian yang diberesin otomatis saat diterbitkan:</div>
-  <ul id="peringatanList"></ul>
-  <button id="ppTutup">Tutup</button>
 </div>
 <div class="mtabs" role="tablist">
   <button id="mKode" role="tab" aria-selected="true">Kode</button>
@@ -210,6 +219,26 @@ iframe{flex:1;width:100%;border:0;background:#fff}
   </div>
 </div>
 
+<div class="hasil" id="hasil" hidden>
+  <div class="hasil-card">
+    <h1>Halamanmu sudah terbit!</h1>
+    <p class="hasil-url" id="hasilUrl"></p>
+    <div class="qr" id="qr"></div>
+    <p class="hasil-hint">Foto QR ini pakai kamera HP, atau bagikan tautannya.</p>
+    <div class="hasil-tombol">
+      <button id="btnBagikan">Bagikan</button>
+      <button id="btnSalin">Salin tautan</button>
+      <a class="tombol-buka" id="btnBuka" href="/__SLUG_HTML__" target="_blank" rel="noopener">Buka halaman ↗</a>
+    </div>
+    <div class="hasil-peringatan" id="hasilPeringatan" hidden>
+      <div>⚠ Ada bagian yang diberesin otomatis waktu diterbitkan:</div>
+      <ul id="peringatanList"></ul>
+    </div>
+    <button class="hasil-tutup" id="hasilTutup">Lanjut menyunting</button>
+  </div>
+</div>
+
+<script src="/aset/qrcode.js"></script>
 <script>
 (function(){
   var SLUG=__SLUG_JSON__, DOMAIN=__DOMAIN_JSON__;
@@ -249,6 +278,7 @@ iframe{flex:1;width:100%;border:0;background:#fff}
         try{ sessionStorage.setItem('karya-kode-'+SLUG, kode); }catch(e){}
         CONTOH_ISI=res.data.templat.isi; CONTOH_GAYA=res.data.templat.gaya;
         edIsi.value=res.data.isi||CONTOH_ISI; edGaya.value=res.data.gaya||CONTOH_GAYA;
+        isiDaftarVersi(res.data.versi);
         sembunyikanGate(); load(); render();
       })
       .catch(function(){ $('gateMasuk').disabled=false; tampilkanGate('Tidak bisa menghubungi server. Coba lagi.'); });
@@ -347,29 +377,82 @@ iframe{flex:1;width:100%;border:0;background:#fff}
     jadwal();
   });
 
-  /* ---- unggah foto: perkecil di browser, tempel ke src yang disorot / foto utama ----
-     Server-side upload (/api/foto) belum ada (menyusul M5): fotonya untuk sekarang
-     ditempel sebagai data: URI, hanya untuk pratinjau. Saat diterbitkan, sanitasi
-     server akan mengganti src ini dengan gambar contoh — peringatannya muncul di
-     panel setelah Terbitkan. */
+  /* ---- unggah foto: perkecil di browser, kirim ke /api/foto, lalu tempel
+     src yang dibalas server ke atribut src yang sedang disorot. Server
+     memperkecil dan meng-encode ulang lagi — yang di sini cuma biar yang
+     lewat wifi lab kecil. */
+  function ganti_src(nilai){
+    pilihTab(true);
+    var v=edIsi.value, p=edIsi.selectionStart;
+    var re=/src="([^"]*)"/g, m, hit=null;
+    while((m=re.exec(v))){ if(m.index<=p&&p<=m.index+m[0].length){hit=m;break;} }
+    if(!hit){ re.lastIndex=0; hit=re.exec(v); }
+    if(!hit){ toast('Tidak ada src="…" yang bisa diganti.'); return false; }
+    var a=hit.index+5, b=a+hit[1].length;
+    edIsi.setRangeText(nilai,a,b,'select');
+    jadwal();
+    return true;
+  }
+
   $('foto').addEventListener('change',function(){
     var f=this.files[0]; this.value=''; if(!f) return;
+    if(!KODE){ tampilkanGate('Masuk dulu sebelum mengunggah foto.'); return; }
     var img=new Image(), url=URL.createObjectURL(f);
+    img.onerror=function(){ URL.revokeObjectURL(url); toast('Berkasnya tidak bisa dibaca sebagai gambar.'); };
     img.onload=function(){
       var max=800, sc=Math.min(1,max/Math.max(img.width,img.height));
       var c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
       c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
-      var data=c.toDataURL('image/jpeg',.82);
-      pilihTab(true);
-      var v=edIsi.value, p=edIsi.selectionStart;
-      var re=/src="([^"]*)"/g, m, hit=null;
-      while((m=re.exec(v))){ if(m.index<=p&&p<=m.index+m[0].length){hit=m;break;} }
-      if(!hit){ re.lastIndex=0; hit=re.exec(v); }
-      if(!hit){ toast('Tidak ada src="…" yang bisa diganti.'); return; }
-      var a=hit.index+5, b=a+hit[1].length;
-      edIsi.setRangeText(data,a,b,'select'); toast('Foto dipasang untuk pratinjau ('+Math.round(data.length/1024)+' KB). Unggah asli menyusul.'); jadwal();
+      // PNG dipertahankan supaya gambar bertransparansi tidak jadi hitam;
+      // sisanya dikirim sebagai JPEG.
+      var png=/\.png$/i.test(f.name)||f.type==='image/png';
+      c.toBlob(function(blob){
+        if(!blob){ toast('Fotonya gagal disiapkan. Coba lagi.'); return; }
+        var fd=new FormData();
+        fd.append('slug',SLUG); fd.append('kode',KODE);
+        fd.append('berkas',blob,png?'foto.png':'foto.jpg');
+        $('lblFoto').textContent='Mengunggah…';
+        fetch('/api/foto',{method:'POST',body:fd})
+          .then(function(r){ return r.json().then(function(d){ return {status:r.status,data:d}; }); })
+          .then(function(res){
+            $('lblFoto').textContent='Unggah foto';
+            if(res.status===401){ KODE=null; try{sessionStorage.removeItem('karya-kode-'+SLUG);}catch(e){} tampilkanGate('Kode sudah tidak berlaku. Masuk lagi.'); return; }
+            if(res.status!==200){ toast((res.data&&res.data.error)||'Fotonya gagal diunggah.'); return; }
+            if(ganti_src(res.data.src)) toast('Foto terpasang. Terbitkan supaya orang lain bisa lihat.');
+          })
+          .catch(function(){ $('lblFoto').textContent='Unggah foto'; toast('Tidak bisa menghubungi server. Coba lagi.'); });
+      }, png?'image/png':'image/jpeg', .82);
     };
     img.src=url;
+  });
+
+  /* ---- versi tersimpan ---- */
+  function isiDaftarVersi(daftar){
+    var sel=$('pilihVersi');
+    while(sel.options.length>1) sel.remove(1);
+    if(!daftar||!daftar.length){ sel.hidden=true; return; }
+    daftar.forEach(function(v){
+      var o=document.createElement('option');
+      o.value=v.id;
+      var d=new Date(v.waktu);
+      o.textContent=isNaN(d)?v.id:d.toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      sel.appendChild(o);
+    });
+    sel.hidden=false;
+  }
+
+  $('pilihVersi').addEventListener('change',function(){
+    var id=this.value; this.value=''; if(!id) return;
+    if(!KODE){ tampilkanGate('Masuk dulu.'); return; }
+    if(!confirm('Muat versi ini ke editor? Yang sedang kamu tulis sekarang akan tertimpa (tapi belum diterbitkan).')) return;
+    fetch('/api/versi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:SLUG,kode:KODE,id:id})})
+      .then(function(r){ return r.json().then(function(d){ return {status:r.status,data:d}; }); })
+      .then(function(res){
+        if(res.status!==200){ toast((res.data&&res.data.error)||'Versi itu gagal dimuat.'); return; }
+        edIsi.value=res.data.isi; edGaya.value=res.data.gaya;
+        jadwal(); toast('Versi lama dimuat. Belum diterbitkan — tekan Terbitkan kalau mau dipakai.');
+      })
+      .catch(function(){ toast('Tidak bisa menghubungi server. Coba lagi.'); });
   });
 
   /* ---- kembalikan ke contoh ---- */
@@ -380,15 +463,69 @@ iframe{flex:1;width:100%;border:0;background:#fff}
     jadwal(); toast('Tab '+(isi?'Isi':'Gaya')+' dikembalikan ke contoh.');
   };
 
-  /* ---- peringatan sanitasi ---- */
-  function tampilkanPeringatan(list){
-    var panel=$('peringatanPanel'), ul=$('peringatanList');
-    ul.replaceChildren();
-    if(!list||!list.length){ panel.hidden=true; return; }
-    list.forEach(function(p){ var li=document.createElement('li'); li.textContent=p; ul.appendChild(li); });
-    panel.hidden=false;
+  /* ---- panel hasil terbit: alamat, QR, bagikan ---- */
+  // QR digambar sendiri dari matriks qrcode-generator (bukan innerHTML), jadi
+  // tidak ada string HTML yang disuntikkan ke halaman.
+  function gambarQr(teks){
+    var kotak=$('qr');
+    kotak.replaceChildren();
+    var qr;
+    try{ qr=qrcode(0,'M'); qr.addData(teks); qr.make(); }
+    catch(e){ return; } // QR gagal bukan alasan menyembunyikan alamatnya
+    var n=qr.getModuleCount(), pad=2, ukuran=n+pad*2, NS='http://www.w3.org/2000/svg';
+    var svg=document.createElementNS(NS,'svg');
+    svg.setAttribute('viewBox','0 0 '+ukuran+' '+ukuran);
+    svg.setAttribute('role','img');
+    svg.setAttribute('aria-label','Kode QR ke halamanmu');
+    var latar=document.createElementNS(NS,'rect');
+    latar.setAttribute('width',ukuran); latar.setAttribute('height',ukuran); latar.setAttribute('fill','#fff');
+    svg.appendChild(latar);
+    for(var r=0;r<n;r++){
+      for(var c=0;c<n;c++){
+        if(!qr.isDark(r,c)) continue;
+        var sel=document.createElementNS(NS,'rect');
+        sel.setAttribute('x',c+pad); sel.setAttribute('y',r+pad);
+        sel.setAttribute('width',1); sel.setAttribute('height',1); sel.setAttribute('fill','#000');
+        svg.appendChild(sel);
+      }
+    }
+    kotak.appendChild(svg);
   }
-  $('ppTutup').onclick=function(){ $('peringatanPanel').hidden=true; };
+
+  var ALAMAT='';
+  function tampilkanHasil(url,peringatan){
+    ALAMAT=location.protocol+'//'+location.host+url;
+    $('hasilUrl').textContent=DOMAIN+url;
+    $('btnBuka').href=url;
+    gambarQr(ALAMAT);
+
+    var kotak=$('hasilPeringatan'), ul=$('peringatanList');
+    ul.replaceChildren();
+    if(peringatan&&peringatan.length){
+      peringatan.forEach(function(p){ var li=document.createElement('li'); li.textContent=p; ul.appendChild(li); });
+      kotak.hidden=false;
+    } else { kotak.hidden=true; }
+
+    $('hasil').hidden=false;
+  }
+  $('hasilTutup').onclick=function(){ $('hasil').hidden=true; };
+
+  $('btnBagikan').onclick=function(){
+    if(navigator.share){
+      navigator.share({title:'Halaman webku',url:ALAMAT}).catch(function(){});
+    } else {
+      salinAlamat();
+    }
+  };
+  $('btnSalin').onclick=salinAlamat;
+  function salinAlamat(){
+    var selesai=function(){ toast('Tautan tersalin. Tinggal di-paste.'); };
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ALAMAT).then(selesai,function(){ toast('Salin manual: '+ALAMAT); });
+    } else {
+      toast('Salin manual: '+ALAMAT);
+    }
+  }
 
   /* ---- terbitkan ---- */
   $('btnTerbit').onclick=function(){
@@ -401,9 +538,9 @@ iframe{flex:1;width:100%;border:0;background:#fff}
         $('btnTerbit').disabled=false;
         if(res.status===401){ KODE=null; try{sessionStorage.removeItem('karya-kode-'+SLUG);}catch(e){} tampilkanGate('Kode sudah tidak berlaku. Masuk lagi.'); return; }
         if(res.status!==200){ toast((res.data&&res.data.error)||'Gagal menerbitkan, coba lagi.'); return; }
-        tampilkanPeringatan(res.data.peringatan);
         var link=$('urlLink'); link.href=res.data.url; link.hidden=false;
-        toast('Terbit! '+DOMAIN+res.data.url);
+        isiDaftarVersi(res.data.versi);
+        tampilkanHasil(res.data.url,res.data.peringatan);
       })
       .catch(function(){ $('btnTerbit').disabled=false; toast('Tidak bisa menghubungi server. Coba lagi.'); });
   };

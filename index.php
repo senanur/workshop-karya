@@ -9,6 +9,7 @@ require __DIR__ . '/app/security.php';
 require __DIR__ . '/app/storage.php';
 require __DIR__ . '/app/ratelimit.php';
 require __DIR__ . '/app/sanitize.php';
+require __DIR__ . '/app/foto.php';
 require __DIR__ . '/app/render.php';
 require __DIR__ . '/app/editor_view.php';
 
@@ -70,6 +71,14 @@ if ($method === 'POST' && $path === '/api/buka') {
 
 if ($method === 'POST' && $path === '/api/terbit') {
     karya_handle_terbit();
+}
+
+if ($method === 'POST' && $path === '/api/foto') {
+    karya_handle_unggah_foto();
+}
+
+if ($method === 'POST' && $path === '/api/versi') {
+    karya_handle_versi();
 }
 
 // --- a child's public page: /<slug> ----------------------------------
@@ -166,6 +175,30 @@ function karya_handle_foto(string $slug, string $berkas, bool $headOnly): never
     exit;
 }
 
+// Verifies the edit code for every authenticated route, or ends the request.
+// $status/$pesan differ per route: /api/buka folds "unknown slug" and "wrong
+// code" into one 404 so the reply never reveals which slugs exist, while the
+// others answer 401 because the editor already knows the slug is real.
+// A wrong attempt is only recorded against slugs that actually exist —
+// guessing at slugs that were never seeded reveals nothing and shouldn't be
+// able to litter the rate-limit directory.
+function karya_verifikasi_kode(string $slug, string $kode, int $status, string $pesan): array
+{
+    if (!karya_ratelimit_check_wrong_attempts($slug)) {
+        karya_json_error(429, 'Terlalu banyak percobaan kode salah. Coba lagi beberapa menit lagi.');
+    }
+
+    $meta = karya_load_meta($slug);
+    if ($meta === null || !isset($meta['kode_hash']) || !password_verify($kode, (string) $meta['kode_hash'])) {
+        if ($meta !== null) {
+            karya_ratelimit_record_wrong_attempt($slug);
+        }
+        karya_json_error($status, $pesan);
+    }
+
+    return $meta;
+}
+
 function karya_handle_buka(): never
 {
     $body = karya_json_body();
@@ -176,28 +209,74 @@ function karya_handle_buka(): never
         karya_json_error(404, 'Slug atau kode tidak dikenal.');
     }
 
-    if (!karya_ratelimit_check_wrong_attempts($slug)) {
-        karya_json_error(429, 'Terlalu banyak percobaan kode salah. Coba lagi beberapa menit lagi.');
-    }
-
-    $meta = karya_load_meta($slug);
-    if ($meta === null || !isset($meta['kode_hash']) || !password_verify($kode, (string) $meta['kode_hash'])) {
-        // Same generic error whether the slug doesn't exist or the code is
-        // wrong — never reveal which. Slugs come from seeding (M6); a slug
-        // with no meta.json simply never got seeded.
-        karya_ratelimit_record_wrong_attempt($slug);
-        karya_json_error(404, 'Slug atau kode tidak dikenal.');
-    }
-
-    $templat = karya_load_templat();
+    karya_verifikasi_kode($slug, $kode, 404, 'Slug atau kode tidak dikenal.');
 
     karya_json_ok([
         'isi' => karya_load_text(karya_isi_path($slug)) ?? '',
         'gaya' => karya_load_text(karya_gaya_path($slug)) ?? '',
-        'templat' => $templat,
-        'versi' => [], // saved-versions listing ships in M5
+        'templat' => karya_load_templat(),
+        'versi' => karya_list_versi($slug),
         'url' => '/' . $slug,
     ]);
+}
+
+function karya_handle_versi(): never
+{
+    $body = karya_json_body();
+    $slug = is_string($body['slug'] ?? null) ? strtolower(trim($body['slug'])) : '';
+    $kode = is_string($body['kode'] ?? null) ? trim($body['kode']) : '';
+    $id = is_string($body['id'] ?? null) ? trim($body['id']) : '';
+
+    if (!karya_slug_is_valid($slug)) {
+        karya_json_error(404, 'Slug tidak dikenal.');
+    }
+
+    karya_verifikasi_kode($slug, $kode, 401, 'Kode salah.');
+
+    $versi = karya_load_versi($slug, $id);
+    if ($versi === null) {
+        karya_json_error(404, 'Versi itu tidak ada lagi.');
+    }
+
+    karya_json_ok($versi);
+}
+
+function karya_handle_unggah_foto(): never
+{
+    // A body over post_max_size arrives with $_POST and $_FILES both empty,
+    // so there is nothing to read back — catch it before anything else.
+    if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        karya_json_error(413, 'Fotonya terlalu besar. Maksimum 1 MB.');
+    }
+
+    $slug = is_string($_POST['slug'] ?? null) ? strtolower(trim($_POST['slug'])) : '';
+    $kode = is_string($_POST['kode'] ?? null) ? trim($_POST['kode']) : '';
+
+    if (!karya_slug_is_valid($slug)) {
+        karya_json_error(404, 'Slug tidak dikenal.');
+    }
+
+    if (!karya_ratelimit_check_global()) {
+        karya_json_error(429, 'Server sedang sibuk, coba lagi sebentar lagi.');
+    }
+
+    $meta = karya_verifikasi_kode($slug, $kode, 401, 'Kode salah.');
+
+    $berkas = $_FILES['berkas'] ?? null;
+    if (!is_array($berkas)) {
+        karya_json_error(422, 'Tidak ada foto yang dikirim.');
+    }
+
+    $hasil = karya_simpan_foto($slug, $berkas);
+    if ($hasil['ok'] !== true) {
+        karya_json_error($hasil['status'], $hasil['pesan']);
+    }
+
+    $meta['jumlah_foto'] = karya_hitung_foto($slug);
+    $meta['terakhir_ubah'] = gmdate('c');
+    karya_save_meta($slug, $meta);
+
+    karya_json_ok(['src' => $hasil['src']]);
 }
 
 function karya_handle_terbit(): never
@@ -226,17 +305,7 @@ function karya_handle_terbit(): never
         karya_json_error(422, 'Tab Isi tidak boleh kosong.');
     }
 
-    if (!karya_ratelimit_check_wrong_attempts($slug)) {
-        karya_json_error(429, 'Terlalu banyak percobaan kode salah. Coba lagi beberapa menit lagi.');
-    }
-
-    $meta = karya_load_meta($slug);
-    if ($meta === null || !isset($meta['kode_hash']) || !password_verify($kode, (string) $meta['kode_hash'])) {
-        if ($meta !== null) {
-            karya_ratelimit_record_wrong_attempt($slug);
-        }
-        karya_json_error(401, 'Kode salah.');
-    }
+    $meta = karya_verifikasi_kode($slug, $kode, 401, 'Kode salah.');
 
     $isiSan = karya_sanitize_html($isiIn);
     $gayaSan = karya_sanitize_css($gayaIn);
@@ -247,10 +316,15 @@ function karya_handle_terbit(): never
     karya_save_text_atomic(karya_isi_path($slug), $isiSan['html']);
     karya_save_text_atomic(karya_gaya_path($slug), $gayaSan['css']);
     karya_publish_html($slug, $html);
+    karya_save_versi($slug, $isiSan['html'], $gayaSan['css']);
 
     $meta['terakhir_ubah'] = gmdate('c');
     $meta['sudah_terbit'] = true;
     karya_save_meta($slug, $meta);
 
-    karya_json_ok(['url' => '/' . $slug, 'peringatan' => $peringatan]);
+    karya_json_ok([
+        'url' => '/' . $slug,
+        'peringatan' => $peringatan,
+        'versi' => karya_list_versi($slug),
+    ]);
 }

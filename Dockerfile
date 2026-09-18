@@ -1,5 +1,14 @@
 FROM php:8.4-cli-alpine
 
+# gd is what re-encodes uploaded photos from pixels only, which is how EXIF
+# (including GPS coordinates) gets dropped — see PRD v2 §9 and app/foto.php.
+# jpeg/png/webp are the three formats the uploader accepts.
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS libjpeg-turbo-dev libpng-dev libwebp-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
+    && docker-php-ext-install -j"$(nproc)" gd \
+    && apk add --no-cache libjpeg-turbo libpng libwebp \
+    && apk del .build-deps
+
 WORKDIR /app
 COPY index.php ./
 COPY app/ ./app/

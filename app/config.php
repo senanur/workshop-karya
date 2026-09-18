@@ -23,6 +23,13 @@ define('KARYA_DEBUG', getenv('KARYA_DEBUG') === '1');
 define('KARYA_MAX_BODY_BYTES', 256 * 1024);
 define('KARYA_MAX_ISI_BYTES', 64 * 1024);
 define('KARYA_MAX_GAYA_BYTES', 16 * 1024);
+define('KARYA_MAX_FOTO_BYTES', 1024 * 1024);
+define('KARYA_MAX_FOTO_PER_ANAK', 8);
+// Guards against decompression bombs: a 1 MB file can still declare enormous
+// dimensions, and GD allocates ~4 bytes per pixel before we ever resize it.
+define('KARYA_MAX_FOTO_PIXELS', 40_000_000);
+define('KARYA_FOTO_MAX_SISI', 800);
+define('KARYA_MAX_VERSI', 5);
 define('KARYA_DOMAIN_LABEL', 'karya.labpplg.web.id');
 
 // Reserved slugs that must never resolve as a child page — they collide with
