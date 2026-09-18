@@ -13,6 +13,12 @@ WORKDIR /app
 COPY index.php ./
 COPY app/ ./app/
 COPY aset/ ./aset/
+# bin/seed.php and bin/uji-beban.php are meant to be run for real via
+# `docker exec` on this container (M6) — they need to actually be in the
+# image, unlike bin/dev-seed.php which ships too since excluding one file
+# from the directory isn't worth the complexity and it's no more reachable
+# than the others (nothing in bin/ is web-routed).
+COPY bin/ ./bin/
 
 # Lets php -S handle several requests concurrently instead of one at a time —
 # no need for nginx/php-fpm in front for this app's traffic (~28 kids, mostly
