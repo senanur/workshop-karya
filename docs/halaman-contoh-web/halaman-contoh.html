@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nadia Aulia — halaman profil</title>
+<!-- CSS dasar (sisi server, tidak tampil di editor) -->
+<link rel="stylesheet" href="dasar.css">
+<!-- Tab Gaya milik peserta -->
+<style>
+:root {
+  --warna-utama:  #A61B2B;   /* judul, garis, tombol */
+  --warna-latar:  #FFFFFF;   /* belakang halaman */
+  --warna-teks:   #232326;
+  --huruf-judul:  Georgia;   /* coba: Arial, Impact, "Comic Sans MS" */
+  --bentuk-foto:  50%;       /* 50% bulat · 0 kotak · 16px sudut tumpul */
+  --lebar:        720px;     /* lebar halaman di layar besar */
+}
+</style>
+</head>
+<body>
+<div class="halaman">
+<!-- Tab Isi milik peserta -->
+<!-- ===== BAGIAN 1: KEPALA ===== -->
+<header>
+  <img class="foto" src="foto/contoh.svg" alt="Foto Nadia">
+  <h1>Nadia Aulia</h1>
+  <p class="sub">Siswa kelas IX — SMP Negeri 4 Samarinda</p>
+</header>
+
+<!-- ===== BAGIAN 2: TENTANG AKU ===== -->
+<section class="tentang">
+  <h2>Tentang aku</h2>
+  <p>Halo! Aku Nadia, suka menggambar dan main voli sepulang sekolah.
+  Halaman ini aku buat sendiri waktu ikut pelatihan membuat web di sekolah.</p>
+</section>
+
+<!-- ===== BAGIAN 3: HAL YANG AKU SUKA ===== -->
+<section class="suka">
+  <h2>Hal yang aku suka</h2>
+  <div class="kartu">
+    <span class="ikon">🎨</span>
+    <h3>Menggambar</h3>
+    <p>Paling sering menggambar tokoh komik di buku tulis.</p>
+  </div>
+  <div class="kartu">
+    <span class="ikon">🏐</span>
+    <h3>Voli</h3>
+    <p>Latihan tiap Rabu bareng tim voli sekolah.</p>
+  </div>
+  <div class="kartu">
+    <span class="ikon">🐱</span>
+    <h3>Memelihara kucing</h3>
+    <p>Punya kucing oranye bernama Kopi.</p>
+  </div>
+</section>
+
+<!-- ===== BLOK TAMBAHAN: tempel blok dari katalog di bawah baris ini ===== -->
+
+
+<footer>Dibuat oleh siswa dalam pelatihan PPLG · SMK TI Airlangga</footer>
+
+</div>
+<!-- skrip blok katalog (sisi server) -->
+<script src="blok.js"></script>
+</body>
+</html>

@@ -13,6 +13,10 @@ function karya_slug_is_valid(string $slug): bool
         return false;
     }
 
+    if (str_starts_with($slug, 'smp-')) {
+        return false; // whole namespace belongs to the school walls, §4
+    }
+
     return !in_array($slug, KARYA_RESERVED_SLUGS, true);
 }
 
@@ -56,28 +60,32 @@ function karya_json_ok(array $payload): never
     exit;
 }
 
-// Headers for a rendered child page: the whole point is that nothing the
-// child submitted can ever execute as script on labpplg.web.id.
+// Headers for a rendered child page. v2 assembles child-submitted HTML/CSS
+// (sanitized, but still their markup) into this page, so the pagers moves
+// from "never execute as script" (v1, no markup accepted at all) to
+// "sanitized on the way in, and CSP as a second line of defense": script-src
+// 'self' lets /aset/blok.js run, but any <script> a child's HTML somehow
+// still contained cannot execute because it isn't same-origin script src.
 function karya_send_child_page_headers(): void
 {
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: no-referrer');
-    // style-src allows inline styles because the <style> block is a static,
-    // server-authored template — user text is only ever interpolated into
-    // escaped text nodes, never into CSS. script-src stays 'none': that's the
-    // rule that actually matters, since it's what stops any child-submitted
-    // content from ever executing as script.
-    header("Content-Security-Policy: default-src 'self'; script-src 'none'; style-src 'self' 'unsafe-inline'");
+    header('X-Robots-Tag: noindex');
+    header(
+        "Content-Security-Policy: default-src 'none'; script-src 'self'; "
+        . "style-src 'self' 'unsafe-inline'; img-src 'self'; base-uri 'self'; "
+        . "form-action 'none'; frame-ancestors 'self'"
+    );
     header('Content-Type: text/html; charset=utf-8');
 }
 
-// Truncates to a max length in a way that's safe for multi-byte UTF-8 input.
-function karya_clamp_text(string $value, int $maxLen): string
+// Headers for the app's own UI pages (/masuk, /<slug>/edit) — not
+// child-submitted content, so these are allowed their own inline script/style.
+function karya_send_app_page_headers(): void
 {
-    $value = trim($value);
-    if (function_exists('mb_substr')) {
-        return mb_substr($value, 0, $maxLen);
-    }
-
-    return substr($value, 0, $maxLen);
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: no-referrer');
+    header('X-Robots-Tag: noindex');
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src 'self'");
+    header('Content-Type: text/html; charset=utf-8');
 }

@@ -22,6 +22,50 @@ function karya_index_path(string $slug): string
     return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'index.html';
 }
 
+function karya_isi_path(string $slug): string
+{
+    return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'isi.html';
+}
+
+function karya_gaya_path(string $slug): string
+{
+    return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'gaya.css';
+}
+
+function karya_load_text(string $path): ?string
+{
+    if (!is_file($path)) {
+        return null;
+    }
+
+    $raw = file_get_contents($path);
+
+    return $raw === false ? null : $raw;
+}
+
+// Same atomic tmp-file-then-rename pattern as karya_save_meta/karya_publish_html,
+// generalized so isi.html/gaya.css/index.html all go through one code path.
+function karya_save_text_atomic(string $path, string $content): void
+{
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0770, true);
+    }
+
+    $tmp = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
+
+    file_put_contents($tmp, $content, LOCK_EX);
+    rename($tmp, $path);
+}
+
+function karya_load_templat(): array
+{
+    return [
+        'isi' => karya_load_text(KARYA_TEMPLAT_DIR . DIRECTORY_SEPARATOR . 'isi.html') ?? '',
+        'gaya' => karya_load_text(KARYA_TEMPLAT_DIR . DIRECTORY_SEPARATOR . 'gaya.css') ?? '',
+    ];
+}
+
 function karya_load_meta(string $slug): ?array
 {
     $path = karya_meta_path($slug);
@@ -39,31 +83,13 @@ function karya_load_meta(string $slug): ?array
 // never observes a half-written file.
 function karya_save_meta(string $slug, array $meta): void
 {
-    $dir = karya_slug_dir($slug);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0770, true);
-    }
-
-    $path = karya_meta_path($slug);
-    $tmp = $path . '.tmp';
     $json = json_encode($meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-
-    file_put_contents($tmp, $json, LOCK_EX);
-    rename($tmp, $path);
+    karya_save_text_atomic(karya_meta_path($slug), $json);
 }
 
 // Writes the child's published page atomically. A refresh that lands exactly
 // mid-publish must see either the old page or the new one, never a partial one.
 function karya_publish_html(string $slug, string $html): void
 {
-    $dir = karya_slug_dir($slug);
-    if (!is_dir($dir)) {
-        mkdir($dir, 0770, true);
-    }
-
-    $path = karya_index_path($slug);
-    $tmp = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
-
-    file_put_contents($tmp, $html, LOCK_EX);
-    rename($tmp, $path);
+    karya_save_text_atomic(karya_index_path($slug), $html);
 }

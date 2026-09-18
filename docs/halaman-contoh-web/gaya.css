@@ -1,0 +1,8 @@
+:root {
+  --warna-utama:  #A61B2B;   /* judul, garis, tombol */
+  --warna-latar:  #FFFFFF;   /* belakang halaman */
+  --warna-teks:   #232326;
+  --huruf-judul:  Georgia;   /* coba: Arial, Impact, "Comic Sans MS" */
+  --bentuk-foto:  50%;       /* 50% bulat · 0 kotak · 16px sudut tumpul */
+  --lebar:        720px;     /* lebar halaman di layar besar */
+}

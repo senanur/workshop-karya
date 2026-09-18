@@ -1,0 +1,583 @@
+<title>Editor Halaman Profil labpplg</title>
+<style>
+:root{
+  --cherry:#A61B2B; --navy:#2F3C7E; --ink:#1E2440; --text:#232326; --muted:#5E5E66;
+  --paper:#FFFFFF; --mist:#ECEEF5; --line:#D8DDEA; --codebg:#F7F7FA; --warn:#FFF3C4; --warntext:#5A4300;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --cherry:#E0707C; --navy:#9DA9E8; --ink:#E6E8F2; --text:#DCDCE2; --muted:#A3A3AD;
+  --paper:#15171F; --mist:#1E2233; --line:#2F3550; --codebg:#1A1D28; --warn:#4A3E12; --warntext:#F5E3A0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --cherry:#E0707C; --navy:#9DA9E8; --ink:#E6E8F2; --text:#DCDCE2; --muted:#A3A3AD;
+  --paper:#15171F; --mist:#1E2233; --line:#2F3550; --codebg:#1A1D28; --warn:#4A3E12; --warntext:#F5E3A0; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--text);font-family:Carlito,Calibri,"Segoe UI",Arial,sans-serif;font-size:15px;display:flex;flex-direction:column}
+.bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--ink);color:#fff;flex-wrap:wrap}
+.bar .logo{font-weight:700;letter-spacing:.02em;margin-right:4px}
+.bar .url{flex:1;min-width:160px;background:rgba(255,255,255,.12);border-radius:6px;padding:4px 12px;font-family:Consolas,monospace;font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .url b{color:#F6C9CF;font-weight:600}
+button,select,label.btn{font:inherit;border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:6px;padding:5px 12px;cursor:pointer}
+button:hover,label.btn:hover{background:rgba(255,255,255,.1)}
+button.pub{background:var(--cherry);border-color:var(--cherry);font-weight:700}
+button:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #F6C9CF;outline-offset:1px}
+select{background:var(--ink);color:#fff}
+select option{color:#000;background:#fff}
+.demo{background:var(--mist);color:var(--muted);font-size:.85rem;padding:5px 12px;border-bottom:1px solid var(--line)}
+.demo b{color:var(--navy)}
+.pane{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.kode{display:flex;flex-direction:column;border-right:1px solid var(--line);min-height:0}
+.tabs{display:flex;gap:2px;padding:6px 8px 0;background:var(--mist);border-bottom:1px solid var(--line)}
+.tabs button{color:var(--muted);border:1px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;padding:5px 14px}
+.tabs button[aria-selected="true"]{background:var(--codebg);color:var(--ink);font-weight:700;border-color:var(--line)}
+.tabs .sp{flex:1}
+.tabs .hint{align-self:center;font-size:.8rem;color:var(--muted);padding-right:6px}
+textarea{flex:1;min-height:0;width:100%;resize:none;border:0;margin:0;padding:12px 14px;background:var(--codebg);color:var(--text);
+  font-family:"Cascadia Code",Consolas,"Courier New",monospace;font-size:15px;line-height:1.5;tab-size:2;white-space:pre;overflow:auto}
+.warn{display:flex;gap:10px;align-items:center;padding:7px 14px;background:var(--warn);color:var(--warntext);font-size:.9rem;border-top:1px solid var(--line)}
+.warn[hidden]{display:none}
+.prev{display:flex;flex-direction:column;min-height:0;background:var(--mist)}
+.prev .lbl{font-size:.8rem;color:var(--muted);padding:6px 12px;text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between}
+iframe{flex:1;width:100%;border:0;background:#fff}
+.mtabs{display:none}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;font-size:.95rem;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:90vw}
+.toast[hidden]{display:none}
+/* mode karya */
+body.karya .pane{grid-template-columns:1fr}
+body.karya .kode,body.karya .demo,body.karya .prev .lbl{display:none}
+body.karya .prev{background:#fff}
+@media (max-width:760px){
+  .pane{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .kode{border-right:0}
+  .mtabs{display:flex;gap:4px;padding:6px 12px;background:var(--mist);border-bottom:1px solid var(--line)}
+  .mtabs button{color:var(--muted);border-color:var(--line)}
+  .mtabs button[aria-selected="true"]{background:var(--paper);color:var(--ink);font-weight:700}
+  body.lihat-kode .prev{display:none} body.lihat-kode .kode{min-height:0}
+  body:not(.lihat-kode):not(.karya) .kode{display:none}
+  .bar .hint{display:none}
+}
+</style>
+
+<div class="bar">
+  <span class="logo">labpplg</span>
+  <span class="url" id="url">karya.labpplg.web.id/nadia/<b>edit</b></span>
+  <button id="btnKembali" hidden>Kembali ke editor</button>
+  <label class="btn" id="lblFoto">Unggah foto<input type="file" id="foto" accept="image/*" hidden></label>
+  <select id="sisip" aria-label="Sisipkan blok">
+    <option value="">Sisipkan blok ▾</option>
+    <option value="A">A · Kutipan favorit</option>
+    <option value="B">B · Galeri tiga foto</option>
+    <option value="C">C · Lima teratas</option>
+    <option value="D">D · Lencana</option>
+    <option value="E">E · Tombol rahasia</option>
+    <option value="F">F · Hitung mundur</option>
+    <option value="G">G · Hujan emoji</option>
+  </select>
+  <button id="btnReset">Kembalikan ke contoh</button>
+  <button class="pub" id="btnTerbit">Terbitkan</button>
+</div>
+<div class="demo">Contoh untuk peragaan tim. Pratinjau, penanda tag rusak, sisipkan blok, unggah foto, dan kembalikan ke contoh sudah berjalan; <b>Terbitkan</b> hanya berpindah ke tampilan halaman karya, belum menyimpan ke server. Draf disimpan di browser ini.</div>
+<div class="mtabs" role="tablist">
+  <button id="mKode" role="tab" aria-selected="true">Kode</button>
+  <button id="mPrev" role="tab" aria-selected="false">Pratinjau</button>
+</div>
+<div class="pane">
+  <div class="kode">
+    <div class="tabs" role="tablist">
+      <button id="tabIsi" role="tab" aria-selected="true">Isi</button>
+      <button id="tabGaya" role="tab" aria-selected="false">Gaya</button>
+      <span class="sp"></span>
+      <span class="hint" id="hint">HTML · ubah teks di antara tag, jangan hapus tagnya</span>
+    </div>
+    <textarea id="edIsi" spellcheck="false" aria-label="Kode Isi (HTML)"></textarea>
+    <textarea id="edGaya" spellcheck="false" aria-label="Kode Gaya (CSS)" hidden></textarea>
+    <div class="warn" id="warn" hidden>⚠ <span id="warnTxt"></span></div>
+  </div>
+  <div class="prev">
+    <div class="lbl"><span>Pratinjau</span><span id="prevInfo">berubah saat kamu mengetik</span></div>
+    <iframe id="frame" title="Pratinjau halaman"></iframe>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="text/plain" id="srcIsi"><!-- ===== BAGIAN 1: KEPALA ===== -->
+<header>
+  <img class="foto" src="foto/contoh.svg" alt="Foto Nadia">
+  <h1>Nadia Aulia</h1>
+  <p class="sub">Siswa kelas IX — SMP Negeri 4 Samarinda</p>
+</header>
+
+<!-- ===== BAGIAN 2: TENTANG AKU ===== -->
+<section class="tentang">
+  <h2>Tentang aku</h2>
+  <p>Halo! Aku Nadia, suka menggambar dan main voli sepulang sekolah.
+  Halaman ini aku buat sendiri waktu ikut pelatihan membuat web di sekolah.</p>
+</section>
+
+<!-- ===== BAGIAN 3: HAL YANG AKU SUKA ===== -->
+<section class="suka">
+  <h2>Hal yang aku suka</h2>
+  <div class="kartu">
+    <span class="ikon">🎨</span>
+    <h3>Menggambar</h3>
+    <p>Paling sering menggambar tokoh komik di buku tulis.</p>
+  </div>
+  <div class="kartu">
+    <span class="ikon">🏐</span>
+    <h3>Voli</h3>
+    <p>Latihan tiap Rabu bareng tim voli sekolah.</p>
+  </div>
+  <div class="kartu">
+    <span class="ikon">🐱</span>
+    <h3>Memelihara kucing</h3>
+    <p>Punya kucing oranye bernama Kopi.</p>
+  </div>
+</section>
+
+<!-- ===== BLOK TAMBAHAN: tempel blok dari katalog di bawah baris ini ===== -->
+
+
+<footer>Dibuat oleh siswa dalam pelatihan PPLG · SMK TI Airlangga</footer>
+</script>
+<script type="text/plain" id="srcGaya">:root {
+  --warna-utama:  #A61B2B;   /* judul, garis, tombol */
+  --warna-latar:  #FFFFFF;   /* belakang halaman */
+  --warna-teks:   #232326;
+  --huruf-judul:  Georgia;   /* coba: Arial, Impact, "Comic Sans MS" */
+  --bentuk-foto:  50%;       /* 50% bulat · 0 kotak · 16px sudut tumpul */
+  --lebar:        720px;     /* lebar halaman di layar besar */
+}
+</script>
+<script type="text/plain" id="srcDasar">/* ============================================================
+   dasar.css — CSS dasar halaman karya karya.labpplg.web.id
+   Dimuat SEBELUM tab Gaya milik peserta. Tidak tampil di editor.
+   Semua warna/huruf mengambil dari variabel yang diatur peserta.
+   ============================================================ */
+:root {
+  --warna-utama: #A61B2B;
+  --warna-latar: #FFFFFF;
+  --warna-teks:  #232326;
+  --huruf-judul: Georgia;
+  --bentuk-foto: 50%;
+  --lebar:       720px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--warna-latar);
+  color: var(--warna-teks);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+.halaman {
+  max-width: var(--lebar);
+  margin: 0 auto;
+  padding: 28px 18px 48px;
+}
+h1, h2, h3 {
+  font-family: var(--huruf-judul), Georgia, serif;
+  color: var(--warna-utama);
+  line-height: 1.2;
+  margin: 0;
+}
+h1 { font-size: 2.2rem; }
+h2 { font-size: 1.35rem; margin: 26px 0 10px; }
+h3 { font-size: 1.05rem; margin: 6px 0 2px; }
+p  { margin: 6px 0; }
+img { max-width: 100%; }
+
+/* ---------- Bagian 1: kepala ---------- */
+header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 18px;
+  align-items: center;
+  align-content: center;
+  padding-bottom: 18px;
+  border-bottom: 2px solid var(--warna-utama);
+}
+header .foto { grid-row: 1 / 3; }
+header h1 { align-self: end; }
+header .sub { align-self: start; margin: 2px 0 0; }
+@media (max-width: 420px) {
+  header { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  header .foto { grid-row: auto; margin-bottom: 8px; }
+}
+.foto {
+  width: 112px;
+  height: 112px;
+  flex: none;
+  object-fit: cover;
+  border-radius: var(--bentuk-foto);
+  background: color-mix(in srgb, var(--warna-utama) 18%, var(--warna-latar));
+}
+.sub { opacity: .75; margin-top: 2px; }
+
+/* ---------- Bagian 2: tentang aku ---------- */
+.tentang {
+  margin-top: 22px;
+  padding: 12px 16px;
+  border-left: 4px solid var(--warna-utama);
+  background: color-mix(in srgb, var(--warna-utama) 7%, var(--warna-latar));
+  border-radius: 0 6px 6px 0;
+}
+.tentang h2 { margin-top: 0; font-size: 1.05rem; }
+
+/* ---------- Bagian 3: hal yang aku suka ---------- */
+.suka { margin-top: 8px; }
+.suka h2 { grid-column: 1 / -1; }
+.suka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+.kartu {
+  border: 1.5px solid color-mix(in srgb, var(--warna-teks) 35%, var(--warna-latar));
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.kartu .ikon { font-size: 1.7rem; line-height: 1; display: block; }
+.kartu p { font-size: .93rem; opacity: .8; }
+
+/* ---------- footer ---------- */
+footer {
+  margin-top: 36px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--warna-teks) 25%, var(--warna-latar));
+  font-size: .85rem;
+  opacity: .7;
+}
+
+/* ============================================================
+   Blok katalog
+   ============================================================ */
+/* A · Kutipan */
+.kutipan {
+  margin: 26px 0 0;
+  padding: 14px 18px;
+  font-family: var(--huruf-judul), Georgia, serif;
+  font-size: 1.2rem;
+  font-style: italic;
+  border-left: 4px solid var(--warna-utama);
+}
+.kutipan cite { display: block; margin-top: 6px; font-size: .9rem; font-style: normal; opacity: .7; }
+
+/* B · Galeri */
+.galeri {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 26px;
+}
+.galeri img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid var(--warna-utama);
+}
+
+/* C · Lima teratas */
+.top5 {
+  margin: 4px 0 0;
+  padding-left: 0;
+  list-style: none;
+  counter-reset: top;
+}
+.top5 li {
+  counter-increment: top;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed color-mix(in srgb, var(--warna-teks) 30%, var(--warna-latar));
+}
+.top5 li::before {
+  content: counter(top);
+  font-family: var(--huruf-judul), Georgia, serif;
+  font-size: 1.5rem;
+  color: var(--warna-utama);
+  min-width: 1.4em;
+}
+
+/* D · Lencana */
+.lencana { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+.lencana span {
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: var(--warna-utama);
+  color: var(--warna-latar);
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+/* E · Tombol rahasia */
+.rahasia {
+  margin-top: 26px;
+  padding: 10px 20px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--warna-utama);
+  color: var(--warna-latar);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rahasia:active { transform: translateY(1px); }
+.rahasia-pesan {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warna-utama) 12%, var(--warna-latar));
+  animation: muncul .3s ease-out;
+}
+@keyframes muncul { from { opacity: 0; transform: translateY(-6px); } }
+
+/* F · Hitung mundur */
+.mundur {
+  margin-top: 26px;
+  padding: 16px 20px;
+  border: 2px solid var(--warna-utama);
+  border-radius: 10px;
+  text-align: center;
+}
+.mundur b {
+  display: block;
+  font-family: var(--huruf-judul), Georgia, serif;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--warna-utama);
+  font-variant-numeric: tabular-nums;
+}
+.mundur span { font-size: .95rem; opacity: .8; }
+
+/* G · Hujan emoji */
+.hujan { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+.hujan i {
+  position: absolute;
+  top: -40px;
+  font-style: normal;
+  animation: jatuh linear infinite;
+}
+@keyframes jatuh { to { transform: translateY(110vh) rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .hujan i { animation: none; display: none; } }
+.halaman { position: relative; z-index: 1; }
+</script>
+<script type="text/plain" id="srcBlok">/* ============================================================
+   blok.js — skrip untuk blok katalog yang butuh interaksi.
+   Dimuat di halaman karya. Peserta tidak menulis JavaScript;
+   mereka hanya mengubah atribut data-… pada bloknya.
+   ============================================================ */
+(function () {
+  // E · Tombol rahasia: klik → tampilkan data-pesan di bawah tombol
+  document.querySelectorAll('.rahasia').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var lama = btn.nextElementSibling;
+      if (lama && lama.classList.contains('rahasia-pesan')) { lama.remove(); return; }
+      var p = document.createElement('div');
+      p.className = 'rahasia-pesan';
+      p.textContent = btn.getAttribute('data-pesan') || '(isi data-pesan dulu)';
+      btn.insertAdjacentElement('afterend', p);
+    });
+  });
+
+  // F · Hitung mundur: data-tanggal (YYYY-MM-DD) → selisih hari dari hari ini
+  document.querySelectorAll('.mundur').forEach(function (el) {
+    var t = el.getAttribute('data-tanggal') || '';
+    var label = el.getAttribute('data-label') || 'hari lagi';
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t.trim());
+    var b = document.createElement('b');
+    var s = document.createElement('span');
+    if (!m) {
+      b.textContent = '?';
+      s.textContent = 'tanggal harus ditulis tahun-bulan-tanggal, contoh 2027-06-12';
+    } else {
+      var target = new Date(+m[1], +m[2] - 1, +m[3]);
+      var kini = new Date(); kini.setHours(0, 0, 0, 0);
+      var hari = Math.round((target - kini) / 86400000);
+      b.textContent = Math.abs(hari);
+      s.textContent = hari < 0 ? 'hari yang lalu · ' + label : label;
+    }
+    el.replaceChildren(b, s);
+  });
+
+  // G · Hujan emoji: data-emoji, data-jumlah (maks 60)
+  document.querySelectorAll('.hujan').forEach(function (el) {
+    var emoji = el.getAttribute('data-emoji') || '⭐';
+    var n = Math.min(60, Math.max(0, parseInt(el.getAttribute('data-jumlah') || '25', 10) || 0));
+    el.replaceChildren();
+    for (var k = 0; k < n; k++) {
+      var i = document.createElement('i');
+      i.textContent = emoji;
+      i.style.left = (Math.random() * 100) + '%';
+      i.style.fontSize = (14 + Math.random() * 18) + 'px';
+      i.style.animationDuration = (6 + Math.random() * 8) + 's';
+      i.style.animationDelay = (-Math.random() * 14) + 's';
+      i.style.opacity = (0.35 + Math.random() * 0.5).toFixed(2);
+      el.appendChild(i);
+    }
+  });
+})();
+</script>
+<script type="text/plain" id="srcFoto">data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Cdefs%3E%3ClinearGradient id=%22g%22 x1=%220%22 y1=%220%22 x2=%221%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%232F3C7E%22/%3E%3Cstop offset=%221%22 stop-color=%22%23A61B2B%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%22200%22 height=%22200%22 fill=%22url%28%23g%29%22/%3E%3Ccircle cx=%22135%22 cy=%2270%22 r=%2234%22 fill=%22%23fff%22 opacity=%22.85%22/%3E%3Ccircle cx=%2280%22 cy=%22130%22 r=%2248%22 fill=%22%23A61B2B%22 opacity=%22.9%22/%3E%3C/svg%3E</script>
+<script type="text/plain" id="srcG1">data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22%3E%3Crect width=%22300%22 height=%22300%22 fill=%22%23ECEEF5%22/%3E%3Ctext x=%22150%22 y=%22150%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%232F3C7E%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EGambar komikku%3C/text%3E%3Ctext x=%22150%22 y=%22190%22 font-family=%22Arial%22 font-size=%2214%22 fill=%22%232F3C7E%22 text-anchor=%22middle%22 opacity=%22.7%22%3Efoto contoh 1%3C/text%3E%3C/svg%3E</script>
+<script type="text/plain" id="srcG2">data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22%3E%3Crect width=%22300%22 height=%22300%22 fill=%22%23F4EEEF%22/%3E%3Ctext x=%22150%22 y=%22150%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%23A61B2B%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3EKopi si kucing%3C/text%3E%3Ctext x=%22150%22 y=%22190%22 font-family=%22Arial%22 font-size=%2214%22 fill=%22%23A61B2B%22 text-anchor=%22middle%22 opacity=%22.7%22%3Efoto contoh 2%3C/text%3E%3C/svg%3E</script>
+<script type="text/plain" id="srcG3">data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 300 300%22%3E%3Crect width=%22300%22 height=%22300%22 fill=%22%23E8F1E4%22/%3E%3Ctext x=%22150%22 y=%22150%22 font-family=%22Arial%22 font-size=%2224%22 fill=%22%233A6B2A%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3ELapangan voli%3C/text%3E%3Ctext x=%22150%22 y=%22190%22 font-family=%22Arial%22 font-size=%2214%22 fill=%22%233A6B2A%22 text-anchor=%22middle%22 opacity=%22.7%22%3Efoto contoh 3%3C/text%3E%3C/svg%3E</script>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var src=function(id){return $(id).textContent};
+  var FOTO={ 'foto/contoh.svg':src('srcFoto'), 'foto/contoh-1.svg':src('srcG1'), 'foto/contoh-2.svg':src('srcG2'), 'foto/contoh-3.svg':src('srcG3') };
+  var CONTOH_ISI=src('srcIsi'), CONTOH_GAYA=src('srcGaya');
+  var edIsi=$('edIsi'), edGaya=$('edGaya'), frame=$('frame'), warn=$('warn'), warnTxt=$('warnTxt');
+  var MARK='<!-- ===== BLOK TAMBAHAN';
+  var BLOK={
+    A:'<blockquote class="kutipan">\n  Jangan takut salah, takutlah tidak mencoba.\n  <cite>— Kata Ibu</cite>\n</blockquote>',
+    B:'<div class="galeri">\n  <img src="foto/contoh-1.svg" alt="Gambar komikku">\n  <img src="foto/contoh-2.svg" alt="Kopi si kucing">\n  <img src="foto/contoh-3.svg" alt="Lapangan voli">\n</div>',
+    C:'<h2>Lima lagu favoritku</h2>\n<ol class="top5">\n  <li>Lagu pertama</li>\n  <li>Lagu kedua</li>\n  <li>Lagu ketiga</li>\n  <li>Lagu keempat</li>\n  <li>Lagu kelima</li>\n</ol>',
+    D:'<div class="lencana">\n  <span>Kelas 9A</span>\n  <span>Tim voli</span>\n  <span>Pencinta kucing</span>\n</div>',
+    E:'<button class="rahasia"\n  data-pesan="Kamu menemukan rahasiaku: aku takut cicak.">\n  Jangan diklik\n</button>',
+    F:'<div class="mundur"\n  data-tanggal="2027-06-12"\n  data-label="hari lagi menuju lulus SMP">\n</div>',
+    G:'<div class="hujan"\n  data-emoji="⭐"\n  data-jumlah="25">\n</div>'
+  };
+
+  /* ---- simpan/muat draf (per browser) ---- */
+  function load(){ try{ var d=JSON.parse(localStorage.getItem('draf-nadia')||'null'); if(d&&typeof d.isi==='string'){edIsi.value=d.isi; edGaya.value=d.gaya; return;} }catch(e){} edIsi.value=CONTOH_ISI; edGaya.value=CONTOH_GAYA; }
+  function save(){ try{ localStorage.setItem('draf-nadia',JSON.stringify({isi:edIsi.value,gaya:edGaya.value})); }catch(e){} }
+
+  /* ---- cek keseimbangan tag ---- */
+  var VOID={img:1,br:1,hr:1,input:1,meta:1,link:1,source:1,wbr:1};
+  function cekTag(html){
+    var s=html.replace(/<!--[\s\S]*?-->/g,function(m){return m.replace(/[^\n]/g,' ')});
+    var re=/<\s*(\/?)([a-zA-Z][\w-]*)([^<>]*?)(\/?)>/g, m, stack=[];
+    var lineOf=function(pos){return s.slice(0,pos).split('\n').length};
+    while((m=re.exec(s))){
+      var close=m[1]==='/', name=m.tagName=m[2].toLowerCase(), self=m[4]==='/';
+      if(VOID[name]||self) continue;
+      if(!close){ stack.push({n:name,l:lineOf(m.index)}); }
+      else{
+        if(!stack.length) return 'ada </'+name+'> di baris '+lineOf(m.index)+' tanpa pembukanya';
+        var top=stack.pop();
+        if(top.n!==name) return '<'+top.n+'> di baris '+top.l+' belum ditutup, tetapi ada </'+name+'> di baris '+lineOf(m.index);
+      }
+    }
+    if(stack.length){ var t=stack[stack.length-1]; return '<'+t.n+'> di baris '+t.l+' belum ditutup'; }
+    var lt=(s.match(/</g)||[]).length, gt=(s.match(/>/g)||[]).length;
+    if(lt!==gt) return 'jumlah tanda < dan > tidak sama; ada tag yang belum lengkap';
+    return null;
+  }
+
+  /* ---- pratinjau ---- */
+  var lastGood=null, timer=null;
+  function bangun(isi,gaya){
+    var html=isi.replace(/src="(foto\/[^"]+)"/g,function(m,p){return FOTO[p]?'src="'+FOTO[p]+'"':m});
+    return '<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+      +'<style>'+src('srcDasar')+'</style><style>'+gaya+'</style></head><body><div class="halaman">'+html+'</div>'
+      +'<script>'+src('srcBlok')+'<\/script></body></html>';
+  }
+  function render(){
+    var err=cekTag(edIsi.value);
+    if(err){ warnTxt.textContent=err+'. Pratinjau menampilkan versi terakhir yang benar.'; warn.hidden=false; if(lastGood) frame.srcdoc=bangun(lastGood,edGaya.value); return; }
+    warn.hidden=true; lastGood=edIsi.value; frame.srcdoc=bangun(edIsi.value,edGaya.value);
+  }
+  function jadwal(){ save(); clearTimeout(timer); timer=setTimeout(render,350); }
+  edIsi.addEventListener('input',jadwal); edGaya.addEventListener('input',jadwal);
+
+  /* ---- tab penutup otomatis: ketik ">" setelah <tag ...> ---- */
+  edIsi.addEventListener('keydown',function(e){
+    if(e.key!=='>') return;
+    var v=edIsi.value, p=edIsi.selectionStart, awal=v.lastIndexOf('<',p-1);
+    if(awal<0) return;
+    var frag=v.slice(awal,p), m=/^<([a-zA-Z][\w-]*)[^<>\/]*$/.exec(frag);
+    if(!m||VOID[m[1].toLowerCase()]) return;
+    var sesudah=v.slice(p);
+    if(new RegExp('^>\\s*</'+m[1]).test(sesudah)) return;
+    e.preventDefault();
+    var ins='></'+m[1]+'>';
+    edIsi.setRangeText(ins,p,p,'end'); edIsi.selectionStart=edIsi.selectionEnd=p+1; jadwal();
+  });
+
+  /* ---- tab Isi / Gaya ---- */
+  function pilihTab(isi){
+    $('tabIsi').setAttribute('aria-selected',isi); $('tabGaya').setAttribute('aria-selected',!isi);
+    edIsi.hidden=!isi; edGaya.hidden=isi;
+    $('hint').textContent=isi?'HTML · ubah teks di antara tag, jangan hapus tagnya':'CSS · ubah nilai setelah tanda titik dua';
+    (isi?edIsi:edGaya).focus();
+  }
+  $('tabIsi').onclick=function(){pilihTab(true)}; $('tabGaya').onclick=function(){pilihTab(false)};
+
+  /* ---- sisipkan blok di bawah penanda ---- */
+  $('sisip').addEventListener('change',function(){
+    var k=this.value; this.value=''; if(!k) return;
+    pilihTab(true);
+    var v=edIsi.value, i=v.indexOf(MARK);
+    var kode='\n'+BLOK[k]+'\n';
+    if(i<0){ var f=v.lastIndexOf('<footer'); i=f<0?v.length:f; edIsi.setRangeText(kode,i,i); }
+    else { var akhir=v.indexOf('\n',i); akhir=akhir<0?v.length:akhir+1; edIsi.setRangeText(kode,akhir,akhir); i=akhir; }
+    var awalBlok=edIsi.value.indexOf(BLOK[k].slice(0,12),i-2);
+    var quote=edIsi.value.indexOf('"',awalBlok+20); var q2=edIsi.value.indexOf('"',quote+1);
+    var selStart=quote>0?quote+1:awalBlok, selEnd=q2>0?q2:selStart;
+    if(k==='A'||k==='C'||k==='D'){ var nl=edIsi.value.indexOf('\n',awalBlok); var nl2=edIsi.value.indexOf('\n',nl+1); selStart=nl+3; selEnd=nl2; if(k==='C'){selStart=awalBlok+4;selEnd=edIsi.value.indexOf('</h2>',awalBlok);} if(k==='D'){selStart=edIsi.value.indexOf('<span>',awalBlok)+6;selEnd=edIsi.value.indexOf('</span>',awalBlok);} }
+    edIsi.focus(); edIsi.setSelectionRange(selStart,selEnd);
+    var baris=edIsi.value.slice(0,selStart).split('\n').length; edIsi.scrollTop=Math.max(0,(baris-6)*22.5);
+    toast('Blok '+k+' ditempel di bawah penanda. Ganti nilainya yang sedang disorot.');
+    jadwal();
+  });
+
+  /* ---- unggah foto: perkecil di browser, tempel ke src yang disorot / foto utama ---- */
+  $('foto').addEventListener('change',function(){
+    var f=this.files[0]; this.value=''; if(!f) return;
+    var img=new Image(), url=URL.createObjectURL(f);
+    img.onload=function(){
+      var max=800, sc=Math.min(1,max/Math.max(img.width,img.height));
+      var c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(url);
+      var data=c.toDataURL('image/jpeg',.82);
+      pilihTab(true);
+      var v=edIsi.value, p=edIsi.selectionStart;
+      var re=/src="([^"]*)"/g, m, hit=null;
+      while((m=re.exec(v))){ if(m.index<=p&&p<=m.index+m[0].length){hit=m;break;} }
+      if(!hit){ re.lastIndex=0; hit=re.exec(v); }
+      if(!hit){ toast('Tidak ada src="…" yang bisa diganti.'); return; }
+      var a=hit.index+5, b=a+hit[1].length;
+      edIsi.setRangeText(data,a,b,'select'); toast('Foto dipasang ('+Math.round(data.length/1024)+' KB). Kalau salah tempat, letakkan kursor di src yang benar lalu unggah lagi.'); jadwal();
+    };
+    img.src=url;
+  });
+
+  /* ---- kembalikan ke contoh ---- */
+  $('btnReset').onclick=function(){
+    var isi=!edIsi.hidden;
+    if(!confirm('Kembalikan tab '+(isi?'Isi':'Gaya')+' ke contoh? Perubahanmu di tab ini akan hilang.')) return;
+    if(isi) edIsi.value=CONTOH_ISI; else edGaya.value=CONTOH_GAYA;
+    jadwal(); toast('Tab '+(isi?'Isi':'Gaya')+' dikembalikan ke contoh.');
+  };
+
+  /* ---- terbitkan (demo: pindah ke tampilan karya) ---- */
+  $('btnTerbit').onclick=function(){
+    if(!warn.hidden){ toast('Masih ada tag yang belum ditutup. Perbaiki dulu sebelum menerbitkan.'); return; }
+    document.body.classList.add('karya'); document.body.classList.remove('lihat-kode');
+    $('url').innerHTML='<b>karya</b>.labpplg.web.id/nadia'; $('btnKembali').hidden=false; $('btnTerbit').hidden=true; $('btnReset').hidden=true; $('sisip').hidden=true; $('lblFoto').hidden=true;
+    toast('Terbit! Ini yang dilihat orang tua di karya.labpplg.web.id/nadia');
+  };
+  $('btnKembali').onclick=function(){
+    document.body.classList.remove('karya');
+    $('url').innerHTML='karya.labpplg.web.id/nadia/<b>edit</b>'; $('btnKembali').hidden=true; $('btnTerbit').hidden=false; $('btnReset').hidden=false; $('sisip').hidden=false; $('lblFoto').hidden=false;
+  };
+
+  /* ---- tab HP: kode / pratinjau ---- */
+  $('mKode').onclick=function(){document.body.classList.add('lihat-kode'); this.setAttribute('aria-selected',true); $('mPrev').setAttribute('aria-selected',false)};
+  $('mPrev').onclick=function(){document.body.classList.remove('lihat-kode'); this.setAttribute('aria-selected',true); $('mKode').setAttribute('aria-selected',false)};
+  if(window.matchMedia('(max-width:760px)').matches) document.body.classList.add('lihat-kode');
+
+  var tt=null; function toast(m){ var t=$('toast'); t.textContent=m; t.hidden=false; clearTimeout(tt); tt=setTimeout(function(){t.hidden=true},4200); }
+
+  load(); render();
+})();
+</script>

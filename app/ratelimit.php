@@ -37,6 +37,67 @@ function karya_ratelimit_check_slug(string $slug): bool
     return $allowed;
 }
 
+// Guards password_verify() calls against guessing a 6-char edit code:
+// 10 attempts / 5 minutes per slug (§6). Call _check() before verifying the
+// code, and _record() only when the code turned out to be wrong — a correct
+// code never counts against the window.
+function karya_ratelimit_check_wrong_attempts(string $slug): bool
+{
+    $path = KARYA_RATELIMIT_DIR . DIRECTORY_SEPARATOR . 'kode-' . $slug . '.log';
+    $fh = fopen($path, 'c+');
+    if ($fh === false) {
+        return true;
+    }
+
+    flock($fh, LOCK_SH);
+    $now = microtime(true);
+    $windowStart = $now - 300.0;
+    $count = 0;
+    rewind($fh);
+    while (($line = fgets($fh)) !== false) {
+        if ((float) trim($line) >= $windowStart) {
+            $count++;
+        }
+    }
+    flock($fh, LOCK_UN);
+    fclose($fh);
+
+    return $count < 10;
+}
+
+function karya_ratelimit_record_wrong_attempt(string $slug): void
+{
+    $path = KARYA_RATELIMIT_DIR . DIRECTORY_SEPARATOR . 'kode-' . $slug . '.log';
+    $fh = fopen($path, 'c+');
+    if ($fh === false) {
+        return;
+    }
+
+    flock($fh, LOCK_EX);
+    $now = microtime(true);
+    $windowStart = $now - 300.0;
+
+    $lines = [];
+    rewind($fh);
+    while (($line = fgets($fh)) !== false) {
+        $ts = (float) trim($line);
+        if ($ts >= $windowStart) {
+            $lines[] = $ts;
+        }
+    }
+    $lines[] = $now;
+
+    ftruncate($fh, 0);
+    rewind($fh);
+    foreach ($lines as $ts) {
+        fwrite($fh, sprintf("%.6f\n", $ts));
+    }
+    fflush($fh);
+
+    flock($fh, LOCK_UN);
+    fclose($fh);
+}
+
 function karya_ratelimit_check_global(): bool
 {
     $path = KARYA_RATELIMIT_DIR . DIRECTORY_SEPARATOR . 'global.log';

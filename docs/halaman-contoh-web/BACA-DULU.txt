@@ -1,0 +1,24 @@
+Halaman contoh — Jalur A pelatihan SMP (Halaman Profil Web)
+
+isi.html          tab Isi yang dilihat peserta (HTML body, 3 bagian + penanda BLOK TAMBAHAN)
+gaya.css          tab Gaya yang dilihat peserta (6 variabel)
+dasar.css         CSS dasar sisi server: tata letak, blok katalog. Tidak tampil di editor.
+blok.js           skrip sisi server untuk blok E (tombol rahasia), F (hitung mundur), G (hujan emoji)
+foto/             gambar contoh (SVG) yang dirujuk isi.html dan blok galeri
+
+halaman-contoh.html             hasil jadi = dasar.css + gaya.css + isi.html + blok.js (buka langsung di browser)
+halaman-contoh-semua-blok.html  sama, tetapi ketujuh blok katalog sudah ditempel (untuk peragaan fasilitator)
+editor-demo.html                peragaan editor: kode kiri, pratinjau kanan, sisipkan blok, unggah foto,
+                                kembalikan ke contoh, tombol Terbitkan (hanya berpindah tampilan, belum ke server).
+                                Berdiri sendiri, semua aset sudah ditanam; bisa dibuka offline.
+
+Cara server merakit halaman karya: <head> memuat dasar.css lalu <style> berisi gaya.css peserta;
+<body> berisi <div class="halaman"> + isi.html peserta, lalu <script src="blok.js">.
+Sebelum diterbitkan, server membuang <script>, atribut on*, <iframe>, dan tautan javascript: dari isi peserta.
+
+Skema alamat (keputusan 18 Sep 2026):
+  karya.labpplg.web.id/nadia        halaman publik (dicetak di kartu + QR)
+  karya.labpplg.web.id/nadia/edit   editor
+  karya.labpplg.web.id/masuk        pintu masuk dengan kode edit
+  karya.labpplg.web.id/smp-negeri-4 dinding karya per sekolah
+Nama cadangan yang tidak boleh jadi nama anak: masuk, edit, api, smp-*
