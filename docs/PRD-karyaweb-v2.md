@@ -1,6 +1,11 @@
 # PRD v2 — KaryaWeb (editor kode HTML/CSS untuk pelatihan SMP)
 
-Tanggal: 18 September 2026 · Status: **draf, belum diimplementasikan**
+Tanggal: 18 September 2026 · Status: **M4 selesai dan diverifikasi di produksi**
+(router, `/masuk`, `/<slug>/edit`, `/api/buka` + `/api/terbit`, sanitasi
+HTML/CSS, perakit halaman, CSP baru — lihat §14). Diuji langsung di
+`karya.labpplg.web.id` dengan payload serangan nyata (script, event handler,
+`javascript:`/`data:` src-href, CSS `@import`/`url()`/komentar tak tertutup)
+dan seluruhnya tersanitasi sesuai §9. M5–M7 belum dikerjakan.
 
 Dokumen ini menggantikan `docs/PRD-karyaweb.md` (v1, 14 Sep 2026) sebagai acuan
 pengembangan. PRD v1 **tetap disimpan apa adanya** sebagai catatan dari apa yang
@@ -273,16 +278,23 @@ Dipakai di fase 5 rundown (menit 65–85).
 | `app/editor_view.php` | **diganti** editor kode (dari `editor-demo.html`) |
 | `app/blocks.php` | **dihapus**; katalog pindah ke cuplikan HTML + `dasar.css` + `blok.js` |
 | `app/render.php` | **ditulis ulang** jadi perakit halaman |
-| baru: `app/sanitize.php`, `app/foto.php`, `app/dinding.php`, `aset/`, `bin/seed.php` | — |
-| `Dockerfile` | tambah `gd`, salin `aset/`, healthcheck ke `/masuk` |
-| `docker-compose.yml` | tidak berubah |
+| baru: `app/sanitize.php` (M4, selesai), `aset/` (M4, selesai), `app/foto.php` (M5), `app/dinding.php` (M6), `bin/seed.php` (M6 — `bin/dev-seed.php` yang ada sekarang cuma alat dev sekali pakai, bukan ini) | — |
+| `Dockerfile` | salin `aset/` dan healthcheck ke `/masuk` sudah dikerjakan (M4); tambah ekstensi `gd` masih menyusul di M5 bersama `app/foto.php` |
+| `docker-compose.yml` | **berubah**, bukan seperti dugaan awal: label Traefik manual (`traefik.http.routers.karyaweb...`) dihapus M4 setelah deploy pertama ke Dokploy 502 — labelnya bentrok dengan router yang di-generate otomatis oleh Dokploy dari domain resource (host+port yang dikonfigurasi lewat UI/API Dokploy, bukan lewat label compose). Routing sekarang sepenuhnya lewat domain resource Dokploy, sama seperti aplikasi lain di instance yang sama. |
 
 ## 14. Milestone
 
-- **M4 — inti v2.** Router baru, `/masuk`, `/<slug>/edit` dengan editor kode,
-  `/api/buka` + `/api/terbit`, sanitasi HTML/CSS, perakit halaman, CSP baru.
-  Lolos bila halaman contoh bisa disunting dan terbit, dan seluruh uji
-  sanitasi (§9) lolos.
+- **M4 — inti v2. ✅ Selesai, 18 September 2026.** Router baru, `/masuk`,
+  `/<slug>/edit` dengan editor kode, `/api/buka` + `/api/terbit`, sanitasi
+  HTML/CSS, perakit halaman, CSP baru. Lolos bila halaman contoh bisa
+  disunting dan terbit, dan seluruh uji sanitasi (§9) lolos — diverifikasi
+  langsung di `karya.labpplg.web.id` (bukan cuma lokal), termasuk dua bug
+  nyata di sanitizer yang cuma muncul di PHP 8.4 sungguhan (`Dom\HTMLDocument`
+  tidak tersedia di PHP lokal 8.3): `createEmpty()->body` ternyata bisa
+  `null`, dan `LIBXML_NOWARNING` bukan flag yang valid untuk
+  `createFromString()`. Item checklist §9 yang belum berlaku: re-encode
+  foto (menunggu `/api/foto`, M5) dan saklar `disembunyikan` (field ada di
+  `meta.json` tapi belum dibaca di mana pun, menunggu dinding karya, M6).
 - **M5 — foto, versi, hasil terbit.** `/api/foto`, versi tersimpan, panel QR +
   Bagikan, seluruh 7 blok teruji di halaman publik.
 - **M6 — seeding, dinding, deploy.** `bin/seed.php` + kartu cetak, dinding
