@@ -38,7 +38,15 @@ function karya_sanitize_html(string $html): array
         return ['html' => '', 'peringatan' => $peringatan];
     }
 
-    $doc = Dom\HTMLDocument::createEmpty();
+    // createEmpty()'s $body is documented as nullable and — confirmed against
+    // a real PHP 8.4 build, not just the docs — actually comes back null in
+    // practice, so it can't be relied on to already have a <body>.
+    // createFromString() on a minimal document parses real HTML text, which
+    // guarantees a populated $body per the HTML5 parsing algorithm.
+    $doc = Dom\HTMLDocument::createFromString(
+        '<!doctype html><html><body></body></html>',
+        LIBXML_NOERROR | LIBXML_NOWARNING
+    );
     $body = $doc->body;
     // Fragment-context parsing (same as assigning innerHTML in a browser),
     // rather than wrapping in a full document string: content that would
