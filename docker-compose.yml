@@ -12,12 +12,6 @@ services:
     networks:
       - dokploy-network
       - default
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.karyaweb.rule=Host(`karya.labpplg.web.id`)
-      - traefik.http.routers.karyaweb.entrypoints=web
-      - traefik.http.services.karyaweb.loadbalancer.server.port=3000
 
 networks:
   dokploy-network:
