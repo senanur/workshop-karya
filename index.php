@@ -11,6 +11,7 @@ require __DIR__ . '/app/ratelimit.php';
 require __DIR__ . '/app/sanitize.php';
 require __DIR__ . '/app/foto.php';
 require __DIR__ . '/app/render.php';
+require __DIR__ . '/app/dinding.php';
 require __DIR__ . '/app/editor_view.php';
 
 karya_ensure_dirs();
@@ -81,6 +82,12 @@ if ($method === 'POST' && $path === '/api/versi') {
     karya_handle_versi();
 }
 
+// --- school wall: /smp-<nama-sekolah> ----------------------------------
+
+if (($method === 'GET' || $method === 'HEAD') && count($segments) === 1 && str_starts_with($segments[0], 'smp-')) {
+    karya_handle_dinding($segments[0], $method === 'HEAD');
+}
+
 // --- a child's public page: /<slug> ----------------------------------
 
 if (($method === 'GET' || $method === 'HEAD') && count($segments) === 1) {
@@ -103,13 +110,37 @@ function karya_handle_show_slug(string $slug, bool $headOnly = false): never
 
     karya_send_child_page_headers();
 
+    $meta = karya_load_meta($slug);
     $indexPath = karya_index_path($slug);
-    $path = is_file($indexPath)
+    // disembunyikan (a facilitator switch, §9) reverts a page to belum-ada.html
+    // without touching its data — everything the child wrote stays on disk,
+    // ready to reappear the moment the switch flips back.
+    $tersembunyi = $meta !== null && ($meta['disembunyikan'] ?? false) === true;
+    $path = (!$tersembunyi && is_file($indexPath))
         ? $indexPath
-        : KARYA_SISTEM_DIR . DIRECTORY_SEPARATOR . 'belum-ada.html'; // valid slug, nothing published yet — still HTTP 200 per spec
+        : KARYA_SISTEM_DIR . DIRECTORY_SEPARATOR . 'belum-ada.html'; // valid slug, nothing published (or hidden) — still HTTP 200 per spec
 
     if (!$headOnly) {
         readfile($path);
+    }
+    exit;
+}
+
+function karya_handle_dinding(string $sekolahSlug, bool $headOnly): never
+{
+    if (!karya_sekolah_slug_is_valid($sekolahSlug)) {
+        http_response_code(404);
+        exit;
+    }
+
+    // Same headers as a child page (§9: noindex applies to "halaman anak dan
+    // dinding karya" alike) even though this page carries no child markup at
+    // all — every value on it is either a slug, a validated color, or text
+    // that went through htmlspecialchars().
+    karya_send_child_page_headers();
+
+    if (!$headOnly) {
+        echo karya_render_dinding($sekolahSlug);
     }
     exit;
 }

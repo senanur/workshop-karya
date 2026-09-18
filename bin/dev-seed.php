@@ -6,9 +6,10 @@ declare(strict_types=1);
 // be exercised locally without waiting for the real CSV seeder (M6,
 // bin/seed.php). Not meant for production use — no CSV, no printed cards.
 //
-// Usage: php bin/dev-seed.php [slug] [kode]
+// Usage: php bin/dev-seed.php [slug] [kode] [sekolah_slug] [sekolah]
 //   php bin/dev-seed.php            -> slug "nadia", kode "AB23CD"
 //   php bin/dev-seed.php budi Z9K3M4
+//   php bin/dev-seed.php budi Z9K3M4 smp-negeri-21 "SMP Negeri 21"
 
 define('KARYA_APP', true);
 
@@ -20,6 +21,8 @@ karya_ensure_dirs();
 
 $slug = $argv[1] ?? 'nadia';
 $kode = $argv[2] ?? 'AB23CD';
+$sekolahSlug = $argv[3] ?? 'smp-negeri-4-samarinda';
+$sekolah = $argv[4] ?? 'SMP Negeri 4 Samarinda';
 
 if (!karya_slug_is_valid($slug)) {
     fwrite(STDERR, "Slug '{$slug}' tidak valid atau termasuk nama cadangan.\n");
@@ -34,7 +37,9 @@ if (!karya_kode_is_valid($kode)) {
 $now = gmdate('c');
 karya_save_meta($slug, [
     'nama' => ucfirst($slug),
-    'sekolah_slug' => null,
+    'sekolah' => $sekolah,
+    'sekolah_slug' => $sekolahSlug,
+    'kohort' => gmdate('Y-m'),
     'kode_hash' => password_hash($kode, PASSWORD_BCRYPT),
     'dibuat' => $now,
     'terakhir_ubah' => $now,

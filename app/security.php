@@ -20,6 +20,13 @@ function karya_slug_is_valid(string $slug): bool
     return !in_array($slug, KARYA_RESERVED_SLUGS, true);
 }
 
+// Same charset as a child slug, but always "smp-" plus at least one more
+// character, and roomier (school names run longer than first names).
+function karya_sekolah_slug_is_valid(string $slug): bool
+{
+    return (bool) preg_match('/^smp-[a-z0-9-]{1,40}$/', $slug);
+}
+
 // 6 chars, letters+digits only, with visually-confusable characters removed
 // (0 O 1 l I) — kids type this from a printed card, not copy-paste.
 function karya_kode_is_valid(string $kode): bool
