@@ -43,9 +43,14 @@ function karya_sanitize_html(string $html): array
     // practice, so it can't be relied on to already have a <body>.
     // createFromString() on a minimal document parses real HTML text, which
     // guarantees a populated $body per the HTML5 parsing algorithm.
+    // Dom\HTMLDocument::createFromString()'s $options only accepts a small
+    // fixed set of flags (LIBXML_NOERROR, LIBXML_COMPACT,
+    // LIBXML_HTML_NOIMPLIED, Dom\HTML_NO_DEFAULT_NS) — confirmed by a real
+    // ValueError in production; LIBXML_NOWARNING (accepted by the legacy
+    // DOMDocument::loadHTML) is rejected here.
     $doc = Dom\HTMLDocument::createFromString(
         '<!doctype html><html><body></body></html>',
-        LIBXML_NOERROR | LIBXML_NOWARNING
+        LIBXML_NOERROR
     );
     $body = $doc->body;
     // Fragment-context parsing (same as assigning innerHTML in a browser),
