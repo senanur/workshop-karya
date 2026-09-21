@@ -13,6 +13,7 @@ require __DIR__ . '/app/foto.php';
 require __DIR__ . '/app/render.php';
 require __DIR__ . '/app/dinding.php';
 require __DIR__ . '/app/editor_view.php';
+require __DIR__ . '/app/sb3.php';
 
 karya_ensure_dirs();
 
@@ -59,9 +60,27 @@ if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'edit') {
         http_response_code(404);
         exit;
     }
+    // A slug on the Scratch track has no web editor (§3 PRD-jalur-scratch): it
+    // answers 404 rather than redirecting, so a misprinted card (whose slug
+    // ended up on the wrong jalur) is caught at the drill, not mid-session.
+
+    $metaEdit = karya_load_meta($slug);
+    if ($metaEdit !== null && karya_meta_jalur($metaEdit) !== 'web') {
+        http_response_code(404);
+        exit;
+    }
     karya_send_app_page_headers();
     echo karya_render_editor_page($slug);
     exit;
+}
+
+// /masuk is a single gate for both tracks (§3): the form POSTs its slug+kode
+// here,and the server sends back where to go — /<slug>/edit for the web track,or
+// /<slug>/unggah for the Scratch track. A wrong slug/kode folds into one 404
+// reply,same as /api/buka,sothe response never reveals which slugs exist.
+
+if ($method === 'POST' && $path === '/masuk') {
+    karya_handle_masuk();
 }
 
 // --- JSON API -------------------------------------------------------------
@@ -80,6 +99,46 @@ if ($method === 'POST' && $path === '/api/foto') {
 
 if ($method === 'POST' && $path === '/api/versi') {
     karya_handle_versi();
+}
+
+if ($method === 'POST' && $path === '/api/unggah') {
+    karya_handle_unggah_sb3();
+}
+
+if ($method === 'POST' && $path === '/api/terbit-sb3') {
+    karya_handle_terbit_sb3();
+}
+
+// --- a child's published Scratch file: /<slug>/karya.sb3 ------------------
+
+if (($method === 'GET' || $method === 'HEAD') && count($segments) === 2 && $segments[1] === 'karya.sb3') {
+    $slugKarya = $segments[0];
+    $headOnly = $method === 'HEAD';
+    if (!karya_slug_is_valid($slugKarya)) {
+        http_response_code(404);
+        exit;
+    }
+    $metaSb3 = karya_load_meta($slugKarya);
+    if ($metaSb3 === null || karya_meta_jalur($metaSb3) !== 'scratch'
+        || (($metaSb3['disembunyikan'] ?? false) === true)) {
+        http_response_code(404);
+        exit;
+    }
+    $sb3Path = karya_sb3_path($slugKarya);
+    if (!is_file($sb3Path)) {
+        http_response_code(404);
+        exit;
+    }
+    // The file is served as an opaque attachment, never as a document —
+    // a browser that somehow received it must download it, not render it.
+    header('Content-Type: application/octet-stream');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Robots-Tag: noindex');
+    header('Content-Disposition: attachment; filename="karya.sb3"');
+    if (!$headOnly) {
+        readfile($sb3Path);
+    }
+    exit;
 }
 
 // --- school wall: /smp-<nama-sekolah> ----------------------------------
@@ -357,5 +416,154 @@ function karya_handle_terbit(): never
         'url' => '/' . $slug,
         'peringatan' => $peringatan,
         'versi' => karya_list_versi($slug),
+    ]);
+}
+
+// /masuk POST (Jalur Scratch §3): the single gate for both tracks verifies
+// the code,and sends back the destination page per meta.jalur — so one card and
+// one /masuk form serve both tracks,and a misprinted card is caught by which
+// jalur the slug actually ended up on,not by a guess.
+
+function karya_handle_masuk(): never
+{
+    $body = karya_json_body();
+    $slug = is_string($body['slug'] ?? null) ? strtolower(trim($body['slug'])) : '';
+    $kode = is_string($body['kode'] ?? null) ? trim($body['kode']) : '';
+
+    if (!karya_slug_is_valid($slug) || $kode === '') {
+        karya_json_error(404, 'Slug atau kode tidak dikenal.');
+    }
+
+    $meta = karya_verifikasi_kode($slug, $kode, 404, 'Slug atau kode tidak dikenal.');
+    $tujuan = karya_meta_jalur($meta) === 'scratch'
+        ? '/' . $slug . '/unggah'
+        : '/' . $slug . '/edit';
+
+    karya_json_ok(['tujuan' => $tujuan]);
+}
+
+function karya_handle_unggah_sb3(): never
+{
+    // A body over post_max_size arrives with $_POST and $_FILES both empty —
+    // same as /api/foto — catch it before anything else.
+    if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        karya_json_error(413, 'Berkasnya terlalu besar. Maksimum 20 MB.');
+    }
+
+    $slug = is_string($_POST['slug'] ?? null) ? strtolower(trim($_POST['slug'])) : '';
+    $kode = is_string($_POST['kode'] ?? null) ? trim($_POST['kode']) : '';
+
+    if (!karya_slug_is_valid($slug)) {
+        karya_json_error(404, 'Slug tidak dikenal.');
+    }
+
+    if (!karya_ratelimit_check_unggah_global()) {
+
+        karya_json_error(429, 'Server sedang sibuk, coba lagi sebentar lagi.');
+    }
+    if (!karya_ratelimit_check_slug($slug, 10.0)) {
+        karya_json_error(429, 'Tunggu beberapa detik sebelum mengunggah lagi.');
+    }
+
+    $meta = karya_verifikasi_kode($slug, $kode, 401, 'Kode salah.');
+    if (karya_meta_jalur($meta) !== 'scratch') {
+        karya_json_error(422, 'Halaman ini bukan jalur Scratch.');
+    }
+
+    $berkas = $_FILES['berkas'] ?? null;
+    if (!is_array($berkas)) {
+        karya_json_error(422, 'Tidak ada berkas yang dikirim.');
+    }
+
+    $galat = $berkas['error'] ?? UPLOAD_ERR_NO_FILE;
+    if ($galat === UPLOAD_ERR_INI_SIZE || $galat === UPLOAD_ERR_FORM_SIZE) {
+
+        karya_json_error(413, 'Berkasnya terlalu besar. Maksimum 20 MB.');
+    }
+    if ($galat !== UPLOAD_ERR_OK) {
+
+        karya_json_error(422, 'Berkasnya gagal terkirim. Coba lagi.');
+    }
+    $tmp = (string) ($berkas['tmp_name'] ?? '');
+    if ($tmp === '' || !is_uploaded_file($tmp)) {
+        karya_json_error(422, 'Berkasnya gagal terkirim. Coba lagi.');
+    }
+    if ((int) ($berkas['size'] ?? 0) > KARYA_MAX_SB3_BYTES) {
+
+        karya_json_error(413, 'Berkasnya terlalu besar. Maksimum 20 MB.');
+    }
+
+    $hasil = karya_sb3_validasi_dan_susun($tmp, $slug);
+    if ($hasil['ok'] !== true) {
+        @unlink($hasil['hasil'] ?? '');
+        karya_json_error($hasil['status'], $hasil['pesan']);
+    }
+
+    $draf = karya_draf_sb3_path($slug);
+    // rename() is atomic on the same filesystem (both sit in the child's dir),so
+    // a concurrent reader never sees a half-written draf.sb3. On Windows an
+    // existing target blocks rename,so unlink first (prod is Linux anyway).
+
+    @unlink($draf);
+    rename($hasil['hasil'], $draf);
+
+    $meta['jalur'] = 'scratch';
+    $meta['sb3_bytes'] = $hasil['bytes'];
+    $meta['sb3_sha256'] = $hasil['sha256'];
+    $meta['sb3_diunggah'] = gmdate('c');
+    $meta['terakhir_ubah'] = gmdate('c');
+    karya_save_meta($slug, $meta);
+
+    karya_json_ok([
+        'sha256' => $hasil['sha256'],
+        'bytes' => $hasil['bytes'],
+    ]);
+}
+
+function karya_handle_terbit_sb3(): never
+{
+    $body = karya_json_body();
+    $slug = is_string($body['slug'] ?? null) ? strtolower(trim($body['slug'])) : '';
+    $kode = is_string($body['kode'] ?? null) ? trim($body['kode']) : '';
+
+    if (!karya_slug_is_valid($slug)) {
+        karya_json_error(404, 'Slug tidak dikenal.');
+    }
+
+    if (!karya_ratelimit_check_unggah_global()) {
+
+
+        karya_json_error(429, 'Server sedang sibuk, coba lagi sebentar lagi.');
+    }
+    if (!karya_ratelimit_check_slug($slug, 10.0)) {
+
+        karya_json_error(429, 'Tunggu beberapa detik sebelum menerbitkan lagi.');
+    }
+
+    $meta = karya_verifikasi_kode($slug, $kode, 401, 'Kode salah.');
+    if (karya_meta_jalur($meta) !== 'scratch') {
+        karya_json_error(422, 'Halaman ini bukan jalur Scratch.');
+    }
+
+    $draf = karya_draf_sb3_path($slug);
+    if (!is_file($draf)) {
+        karya_json_error(422, 'Belum ada unggahan untuk diterbitkan.');
+    }
+
+    $data = file_get_contents($draf);
+    if ($data === false) {
+        karya_json_error(422, 'Unggahannya tidak bisa dibaca. Coba lagi.');
+    }
+
+    karya_save_binary_atomic(karya_sb3_path($slug), $data);
+    karya_save_versi_sb3($slug, $data);
+
+    $meta['terakhir_ubah'] = gmdate('c');
+    $meta['sudah_terbit'] = true;
+    karya_save_meta($slug, $meta);
+
+    karya_json_ok([
+        'url' => '/' . $slug,
+        'versi' => karya_sb3_versi_ids($slug),
     ]);
 }

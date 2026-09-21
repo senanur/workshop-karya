@@ -32,6 +32,21 @@ define('KARYA_FOTO_MAX_SISI', 800);
 define('KARYA_MAX_VERSI', 5);
 define('KARYA_DOMAIN_LABEL', 'karya.labpplg.web.id');
 
+// Jalur Scratch (PRD-jalur-scratch §5): a .sb3 is a zip, so the guards are zip
+// guards — file size, entry count, per-entry expansion ratio, and total
+// decompressed size (the last three against zip bombs. KARYA_MAX_BODY_BYTES
+// doesn't apply here: that bounds JSON bodies only, multipart uploads are
+// bounded by PHP's own upload_max_filesize/post_max_size instead (Dockerfile).
+define('KARYA_MAX_SB3_BYTES',20 * 1024 * 1024);
+define('KARYA_MAX_SB3_ENTRI',500);
+define('KARYA_MAX_SB3_UKURAN_KEMBANG',60 * 1024 * 1024);
+define('KARYA_MAX_SB3_RASIO_ENTRI',100);
+// Hard per-entry cap: the ratio cap already stops zip bombs,this one stops a
+// single getFromIndex() from ballooning PHP's memory during validation.
+define('KARYA_MAX_SB3_ENTRI_UKURAN',20 * 1024 * 1024);
+define('KARYA_MAX_PROJECT_JSON_BYTES',5 * 1024 * 1024);
+define('KARYA_MAX_VERSI_SB3',2);
+
 // Reserved slugs that must never resolve as a child page — they collide with
 // real routes of this app or with other services on the shared lab domain.
 // v1's list is kept as-is (even 'bikin', whose route is gone in v2) plus the
@@ -40,7 +55,7 @@ define('KARYA_DOMAIN_LABEL', 'karya.labpplg.web.id');
 define('KARYA_RESERVED_SLUGS', [
     'www', 'api', 'admin', 'mail', 'draw', 'supabase', 'dokploy', 'bikin',
     'karya', 'dinding', 'test', 'static', 'cdn',
-    'masuk', 'edit', 'aset', 'foto',
+    'masuk', 'edit', 'aset', 'foto', 'unggah', 'main',
 ]);
 
 error_reporting(E_ALL);

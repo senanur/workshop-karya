@@ -42,6 +42,20 @@ function karya_foto_dir(string $slug): string
     return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'foto';
 }
 
+// Jalur Scratch (PRD-jalur-scratch §4): karya.sb3 is the published, reassembled
+// file; draf.sb3 is the last upload that hasn't been published yet. Versions live
+// in the same versi/ directory as the web track's snapshots, under their own
+// naming scheme so the two never collide.
+function karya_sb3_path(string $slug): string
+{
+    return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'karya.sb3';
+}
+
+function karya_draf_sb3_path(string $slug): string
+{
+    return karya_slug_dir($slug) . DIRECTORY_SEPARATOR . 'draf.sb3';
+}
+
 function karya_load_text(string $path): ?string
 {
     if (!is_file($path)) {
@@ -66,6 +80,60 @@ function karya_save_text_atomic(string $path, string $content): void
 
     file_put_contents($tmp, $content, LOCK_EX);
     rename($tmp, $path);
+}
+
+// Same atomic tmp-file-then-rename pattern as karya_save_text_atomic, for
+// binary payloads — a .sb3 upload is a zip,and must never be half-written on
+// disk where a concurrent reader could observe it. ($tmp and $path must sit on
+// the same filesystem for rename() to be atomic — they do: both in the child's dir.)
+function karya_save_binary_atomic(string $path, string $data): void
+{
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        mkdir($dir, 0770, true);
+    }
+
+    $tmp = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
+
+    file_put_contents($tmp, $data, LOCK_EX);
+    rename($tmp, $path);
+}
+
+// Keeps the last KARYA_MAX_VERSI_SB3 published .sb3 snapshots, newest kept,
+// oldest pruned. Unlike the web track the whole file is one version, not a
+// pair of text files, so it gets its own save path rather than reusing
+// karya_save_versi().
+function karya_save_versi_sb3(string $slug, string $data): void
+{
+    $dir = karya_versi_dir($slug);
+    $id = gmdate('Ymd-His');
+
+    karya_save_binary_atomic($dir . DIRECTORY_SEPARATOR . $id . '.sb3', $data);
+
+    $ids = karya_sb3_versi_ids($slug);
+    foreach (array_slice($ids, KARYA_MAX_VERSI_SB3)as $lama) {
+        @unlink($dir . DIRECTORY_SEPARATOR . $lama . '.sb3');
+    }
+}
+
+/** @return string[] .sb3 version ids, newest first */
+function karya_sb3_versi_ids(string $slug): array
+{
+    $dir = karya_versi_dir($slug);
+    if (!is_dir($dir)) {
+        return [];
+    }
+
+    $ids = [];
+    foreach ((array) scandir($dir)as $nama) {
+        if (is_string($nama) && preg_match('/^(\d{8}-\d{6})\.sb3$/', $nama, $m)) {
+            $ids[] = $m[1];
+        }
+    }
+
+    rsort($ids);
+
+    return $ids;
 }
 
 function karya_load_templat(): array

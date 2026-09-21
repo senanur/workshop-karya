@@ -66,8 +66,14 @@ function karya_render_masuk_page(): string
     if(!/^[a-z0-9-]{2,20}$/.test(s)){ err.textContent='Nama halaman tidak dikenal.'; err.hidden=false; return; }
     if(!k){ err.textContent='Ketik kode edit dari kartumu.'; err.hidden=false; return; }
     try{ sessionStorage.setItem('karya-kode-'+s, k); }catch(ex){}
-    location.href='/'+s+'/edit';
-  });
+    fetch('/masuk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:s,kode:k})})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,status:r.status,data:d}; }); })
+      .then(function(res){
+        if(!res.ok){ err.textContent=(res.data&&res.data.error)||'Tidak bisa masuk.'; err.hidden=false; return; }
+        location.href=res.data.tujuan;
+      })
+      .catch(function(){ err.textContent='Jaringan bermasalah. Coba lagi.'; err.hidden=false; });
+ });
 })();
 </script>
 </body>
