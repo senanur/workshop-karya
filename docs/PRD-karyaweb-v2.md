@@ -1,11 +1,24 @@
 # PRD v2 — KaryaWeb (editor kode HTML/CSS untuk pelatihan SMP)
 
-Tanggal: 18 September 2026 · Status: **M4 selesai dan diverifikasi di produksi**
-(router, `/masuk`, `/<slug>/edit`, `/api/buka` + `/api/terbit`, sanitasi
-HTML/CSS, perakit halaman, CSP baru — lihat §14). Diuji langsung di
+Tanggal: 21 September 2026 · Status: **M4 selesai dan diverifikasi di
+produksi**; **M5 dan M6 selesai dari sisi kode, belum diverifikasi di
+produksi**.
+
+M4 (router, `/masuk`, `/<slug>/edit`, `/api/buka` + `/api/terbit`, sanitasi
+HTML/CSS, perakit halaman, CSP baru — lihat §14) diuji langsung di
 `karya.labpplg.web.id` dengan payload serangan nyata (script, event handler,
 `javascript:`/`data:` src-href, CSS `@import`/`url()`/komentar tak tertutup)
-dan seluruhnya tersanitasi sesuai §9. M5–M7 belum dikerjakan.
+dan seluruhnya tersanitasi sesuai §9.
+
+M5 (`app/foto.php`, versi tersimpan, panel terbit dengan QR + Bagikan) dan M6
+(`bin/seed.php` + kartu cetak, `app/dinding.php`, saklar `disembunyikan` di
+`index.php`) sudah diimplementasikan dan sudah lewat perbaikan lanjutan
+(ekstensi `gd` di `Dockerfile`, `bin/` disalin ke image, perbaikan deprecation
+`fgetcsv()` PHP 8.4 di `bin/seed.php`). **Belum dijalankan:** deploy build ini
+ke `karya.labpplg.web.id`, uji manual §9 untuk jalur foto/versi/dinding/saklar
+di produksi, `bin/uji-beban.php` (30 terbit serentak) di server sungguhan, dan
+gladi dengan siswa PPLG. Sampai itu selesai, M6 belum dianggap tuntas per
+kriteria lolos di §14.
 
 Dokumen ini menggantikan `docs/PRD-karyaweb.md` (v1, 14 Sep 2026) sebagai acuan
 pengembangan. PRD v1 **tetap disimpan apa adanya** sebagai catatan dari apa yang
@@ -295,11 +308,22 @@ Dipakai di fase 5 rundown (menit 65–85).
   `createFromString()`. Item checklist §9 yang belum berlaku: re-encode
   foto (menunggu `/api/foto`, M5) dan saklar `disembunyikan` (field ada di
   `meta.json` tapi belum dibaca di mana pun, menunggu dinding karya, M6).
-- **M5 — foto, versi, hasil terbit.** `/api/foto`, versi tersimpan, panel QR +
-  Bagikan, seluruh 7 blok teruji di halaman publik.
-- **M6 — seeding, dinding, deploy.** `bin/seed.php` + kartu cetak, dinding
-  karya, saklar sembunyikan, `docker build` pertama, deploy ke Dokploy, uji
-  beban 30 terbit serentak, gladi dengan 3–5 siswa PPLG sebagai peserta.
+- **M5 — foto, versi, hasil terbit. Kode selesai, belum diverifikasi di
+  produksi.** `/api/foto` (`app/foto.php`: `getimagesize` untuk deteksi tipe
+  dari isi berkas, re-encode lewat GD yang membuang EXIF/GPS, batas 8 foto
+  dan 1 MB per anak), versi tersimpan, panel QR + Bagikan ada di kode. Belum
+  dikerjakan: uji manual seluruh 7 blok di halaman publik yang sudah di-deploy,
+  dan verifikasi jalur foto di server sungguhan (container Linux dengan
+  ekstensi `gd`, bukan cuma lokal).
+- **M6 — seeding, dinding, deploy. Kode selesai, deploy dan uji belum
+  dikerjakan.** `bin/seed.php` + kartu cetak, `app/dinding.php`, saklar
+  `disembunyikan` (dibaca di `index.php`, mengembalikan `belum-ada.html` tanpa
+  menghapus data) — semua ada di kode dan sudah lewat dua perbaikan lanjutan
+  (`gd` + `bin/` di `Dockerfile`, fix deprecation `fgetcsv()` PHP 8.4). Masih
+  perlu: `docker build` dan deploy build ini ke Dokploy, `bin/uji-beban.php`
+  (30 terbit serentak) dijalankan di server sungguhan, dan gladi dengan 3–5
+  siswa PPLG sebagai peserta — kriteria lolos M6 belum terpenuhi sampai
+  ketiganya selesai.
 - **M7 — sesudah sesi pertama.** Penyorotan sintaks, perbaikan dari temuan
   lapangan.
 
