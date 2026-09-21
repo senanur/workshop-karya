@@ -25,6 +25,13 @@ pengembangan. PRD v1 **tetap disimpan apa adanya** sebagai catatan dari apa yang
 sudah dibangun dan diuji (M1, M2, M3a); kode yang ada di repo saat ini masih
 mencerminkan v1. Bila kedua dokumen bertentangan, v2 yang berlaku.
 
+Jalur Scratch (Jalur B pelatihan: anak mengunggah `.sb3` dan mendapat
+halaman yang bisa dimainkan) dibahas di dokumen pendamping
+`docs/PRD-jalur-scratch.md`, 21 Sep 2026. Dokumen itu menambah modul di
+sebelah jalur web dan tidak mengubah apa pun di sini; yang tersentuh hanya
+`index.php`, `app/config.php`, `app/storage.php`, `app/dinding.php`,
+`bin/seed.php`, dan `Dockerfile`, seluruhnya bersifat penambahan.
+
 Sumber keputusan v2:
 
 - Modul "Modul Pelatihan Halaman Profil Web untuk SMP" (Jalur A), keputusan

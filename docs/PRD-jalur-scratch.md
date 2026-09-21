@@ -1,0 +1,279 @@
+# PRD — Jalur Scratch (unggah dan mainkan karya `.sb3`)
+
+Tanggal: 21 September 2026 · Status: **draf, belum diimplementasikan**
+
+Dokumen pendamping `docs/PRD-karyaweb-v2.md`. PRD v2 tetap berlaku penuh untuk
+jalur web dan tidak diubah oleh dokumen ini; yang ditambahkan di sini bersifat
+modul baru di sebelahnya. Bila keduanya bertentangan soal jalur Scratch,
+dokumen ini yang berlaku; soal jalur web, PRD v2 yang berlaku.
+
+Keputusan dasar (21 Sep 2026): **satu repo, satu deployment, satu namespace
+slug, ditambah dimensi `jalur`** — bukan aplikasi terpisah. Alasannya bukan
+penghematan kode, melainkan karena seeding, kartu cetak, kode edit, daftar nama
+cadangan, dan dinding karya memang harus tunggal. Dua aplikasi di satu domain
+akan berbagi namespace slug tanpa ada yang menengahi, dan anak yang ikut dua
+jalur akan pulang membawa dua kartu dengan dua kode berbeda.
+
+## 1. Latar belakang dan tujuan
+
+Jalur B pelatihan SMP adalah membuat game platformer di Scratch, 2×45 menit,
+berangkat dari berkas `game-platformer-pplg.sb3` (60 KB; sprite Tokoh, Level,
+Koin, plus tiga mekanik yang blok topinya sengaja dilepas). Anak menyunting di
+aplikasi Scratch, bukan di aplikasi kita.
+
+Masalahnya, jalur B berakhir dengan sebuah berkas di komputer lab. Anak pulang
+tanpa membawa apa pun yang bisa ditunjukkan ke orang tua, sementara anak jalur
+web pulang membawa alamat dan QR. Tujuan dokumen ini menutup jurang itu: anak
+mengunggah `.sb3`-nya, mendapat alamat publik yang bisa langsung **dimainkan**
+di peramban, dengan QR dan tombol Bagikan yang bentuknya persis sama.
+
+Ukuran keberhasilan: setiap anak jalur B sudah mengunggah sekali dan melihat
+gamenya berjalan di halamannya sendiri sebelum sesi berakhir.
+
+## 2. Alur anak
+
+1. Menyunting game di Scratch (aplikasi luring di komputer lab atau
+   `scratch.mit.edu`), lalu **File → Save to your computer** → dapat `.sb3`.
+2. Buka `karya.labpplg.web.id/masuk`, ketik nama halaman + kode dari kartu.
+3. Karena `meta.json`-nya berjalur `scratch`, `/masuk` mengarahkan ke
+   `/<slug>/unggah`, bukan ke editor kode.
+4. Pilih atau seret berkas `.sb3` → unggah → halaman langsung memutar hasilnya
+   sebagai pratinjau, **sebelum** diterbitkan.
+5. Klik **Terbitkan** → panel hasil: alamat, QR, tombol Bagikan — komponen yang
+   sama persis dengan M5 jalur web.
+6. Orang tua membuka `/<slug>`, menekan bendera hijau, memainkan gamenya.
+
+Anak boleh mengunggah ulang berkali-kali; unggahan terakhir yang terbit.
+
+## 3. Skema alamat
+
+Menambah pada §4 PRD v2, tidak mengubah yang sudah ada:
+
+| Alamat | Fungsi |
+|---|---|
+| `/<slug>` | halaman pemutar (jalur `scratch`) atau halaman web (jalur `web`) — dipilih dari `meta.jalur` |
+| `/<slug>/unggah` | halaman unggah; padanan `/<slug>/edit` untuk jalur Scratch |
+| `/<slug>/karya.sb3` | berkas `.sb3` terbitan, untuk dimuat pemutar dan untuk diunduh anak |
+| `/api/unggah` | POST multipart: terima, validasi, susun ulang, simpan |
+| `/api/terbit-sb3` | POST JSON: tandai unggahan terakhir sebagai terbit |
+| `/aset/scratch/…` | bundel pemutar + lisensinya |
+
+`/masuk` tetap satu pintu untuk kedua jalur dan mengarahkan sesuai
+`meta.jalur`. `/<slug>/edit` pada slug berjalur `scratch` (dan `/<slug>/unggah`
+pada slug berjalur `web`) menjawab 404, bukan mengarahkan — supaya kartu yang
+salah cetak ketahuan saat gladi, bukan saat sesi berjalan.
+
+Nama cadangan bertambah: `karya.sb3` tidak mungkin jadi slug karena ada titik,
+tapi `unggah` dan `main` ditambahkan ke `KARYA_RESERVED_SLUGS` untuk berjaga.
+
+## 4. Data model
+
+```
+<slug>/
+  meta.json          + jalur, + sb3_bytes, + sb3_sha256, + sb3_diunggah
+  karya.sb3          berkas terbitan, hasil susun ulang server
+  draf.sb3           unggahan terakhir yang belum diterbitkan
+  versi/<ts>.sb3     2 terbitan terakhir
+```
+
+`meta.json` mendapat `jalur` berisi `"web"` atau `"scratch"`. Berkas yang sudah
+ada tanpa kolom itu diperlakukan sebagai `"web"`, sehingga seluruh data jalur
+web yang sudah ter-seed tidak perlu dimigrasi.
+
+Yang dilayani ke publik adalah `karya.sb3` hasil susun ulang, bukan berkas
+mentah yang diunggah anak — sejajar dengan prinsip foto di M5, yang disajikan
+adalah hasil re-encode, bukan berkas asli.
+
+Versi tersimpan dibatasi 2 (bukan 5 seperti jalur web) karena satu `.sb3` jauh
+lebih besar daripada sepasang `isi.html` + `gaya.css`.
+
+## 5. Validasi `.sb3` — checklist wajib
+
+Ini inti keamanan jalur Scratch dan menggantikan peran `app/sanitize.php`, yang
+sama sekali tidak terpakai di sini. `.sb3` adalah zip, jadi ancamannya ancaman
+zip, bukan ancaman HTML.
+
+- [ ] Ukuran berkas ≤ 20 MB. Templat kita 60 KB; batas ini memberi ruang untuk
+      kostum dan suara tambahan tanpa membuka pintu penyalahgunaan penyimpanan.
+- [ ] Dibuka dengan `ZipArchive`; zip terenkripsi ditolak.
+- [ ] Jumlah entri ≤ 500. Total ukuran setelah dikembangkan ≤ 60 MB, dan rasio
+      kembang tiap entri ≤ 100× — dua pagar zip bomb.
+- [ ] Nama tiap entri harus persis `project.json` atau
+      `^[0-9a-f]{32}\.(svg|png|jpg|jpeg|bmp|gif|wav|mp3)$`. Tidak ada garis
+      miring sama sekali, sehingga path traversal (`../`), jalur absolut, dan
+      folder sisa seperti `__MACOSX/` gugur oleh aturan yang sama. Entri lain
+      apa pun membuat seluruh berkas ditolak, bukan dibuang diam-diam.
+- [ ] `project.json` ≤ 5 MB, JSON yang sah, punya `targets` berupa larik dan
+      `meta.semver`. Tiap `assetId`/`md5ext` yang dirujuk harus ada entrinya di
+      dalam zip; rujukan ke aset luar ditolak, supaya halaman tidak pernah
+      menarik apa pun dari `assets.scratch.mit.edu`.
+- [ ] Tipe tiap entri aset diperiksa dari isinya sendiri (`getimagesize`, atau
+      pengecekan magic bytes untuk wav/mp3), bukan dari ekstensinya. Aset SVG
+      diperlakukan sebagai teks yang harus lolos pemeriksaan: tanpa `<script>`,
+      tanpa atribut `on*`, tanpa `<foreignObject>`, tanpa rujukan eksternal.
+      **Ini satu-satunya titik di jalur Scratch tempat markup dari anak masih
+      mungkin masuk**, karena kostum Scratch memang SVG, jadi pemeriksaannya
+      tidak boleh dilewati.
+- [ ] **Susun ulang, jangan simpan mentah.** Setelah semua entri lolos, server
+      membuat zip baru berisi hanya entri yang lolos, ditulis lewat `.tmp` lalu
+      `rename()`. Berkas unggahan asli dibuang. Dengan begitu tidak ada bidang
+      zip aneh, komentar zip, atau data tersembunyi yang ikut terbit.
+- [ ] Batas unggah: 1 per 10 detik per slug, 20 per menit global. Pembatas
+      percobaan kode salah §6 PRD v2 berlaku apa adanya.
+- [ ] `/<slug>/karya.sb3` dilayani dengan
+      `Content-Type: application/octet-stream`, `nosniff`, dan
+      `Content-Disposition: attachment` — supaya tidak pernah dirender sebagai
+      dokumen oleh peramban.
+
+## 6. Halaman pemutar
+
+`/<slug>` merender halaman statis berisi panggung 480×360, tombol bendera hijau
+dan berhenti, tombol layar penuh, nama anak, dan tautan "Unduh berkasnya".
+Pemutar memuat `/<slug>/karya.sb3` sebagai `ArrayBuffer` lalu menyerahkannya ke
+VM; seluruh aset sudah ada di dalam berkas itu, jadi tidak ada satu pun
+permintaan keluar dari jaringan lab.
+
+CSP halaman pemutar berbeda dari CSP halaman web di §9 PRD v2 dan perlu
+diverifikasi empiris sebelum dianggap final:
+
+```
+default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline';
+img-src 'self' blob: data:; media-src 'self' blob: data:;
+connect-src 'self'; worker-src 'self' blob:; base-uri 'self';
+form-action 'none'; frame-ancestors 'self'
+```
+
+`blob:` dan `data:` pada `img-src`/`media-src` diperlukan karena kostum dan
+suara dimuat dari memori, bukan dari URL. Yang **harus dibuktikan tidak
+diperlukan** adalah `'unsafe-eval'`: VM Scratch adalah interpreter, secara
+prinsip tidak perlu `eval`, tetapi ini wajib diuji langsung di peramban sebelum
+M-S2 dinyatakan lolos. Kalau ternyata perlu, itu keputusan yang harus dibahas
+ulang, bukan dilonggarkan diam-diam.
+
+## 7. Bundel pemutar dan lisensinya
+
+Yang dibundel hanya `scratch-vm`, `scratch-render`, `scratch-svg-renderer`, dan
+`scratch-storage` — **bukan** `scratch-gui`. Kita hanya memutar, tidak
+menyediakan editor, sehingga seluruh antarmuka Scratch tidak ikut.
+
+Temuan lisensi, diperiksa 21 Sep 2026 di registry npm:
+
+| Paket | Versi terbaru | Lisensi sekarang | Versi BSD-3 terakhir |
+|---|---|---|---|
+| `scratch-vm` | 5.0.300 | AGPL-3.0-only | 4.8.115 |
+| `scratch-render` | 2.2.84 | AGPL-3.0-only | 1.2.126 |
+| `scratch-svg-renderer` | 3.1.19 | AGPL-3.0-only | 2.5.46 |
+| `scratch-storage` | 6.2.1 | AGPL-3.0-only | 3.0.39 |
+
+Seluruh paket berpindah dari BSD-3-Clause ke AGPL-3.0-only pada rilis mayor
+25 November 2024. Konsekuensinya nyata: menyajikan bundel AGPL ke peramban
+pengunjung adalah penyaluran, dan pasal 13 AGPL mewajibkan menawarkan
+Corresponding Source kepada orang yang berinteraksi dengannya lewat jaringan.
+Menggabungkan kode perekat kita ke dalam bundel yang sama membuat perekat itu
+ikut terikat.
+
+Dua pilihan, dan ini keputusan Bapak, bukan keputusan saya:
+
+**A. Pakai versi BSD-3 terakhir** (`scratch-vm@4.8.115` dan pasangannya).
+Tanpa kewajiban copyleft sama sekali, repo tetap seperti sekarang. Risikonya
+versi itu tidak lagi mendapat perbaikan sejak akhir 2024, dan `.sb3` yang
+dibuat dengan editor Scratch yang jauh lebih baru berpotensi memakai blok yang
+belum dikenal. Untuk kasus kita risiko itu kecil: semua berkas berangkat dari
+templat kita sendiri yang hanya memakai blok klasik, dan format `project.json`
+3.0.0 sudah stabil sejak 2018.
+
+**B. Pakai versi terkini yang AGPL.** Dapat perbaikan terbaru, konsekuensinya
+sumber harus ditawarkan ke pengunjung. Secara praktis: taruh bundel beserta
+`LICENSE` di `aset/scratch/`, pisahkan kode perekat kita ke berkas tersendiri
+di folder yang sama dan lisensikan AGPL juga, lalu pasang tautan sumber di kaki
+halaman pemutar. Untuk repo sekolah yang memang bisa dipublikasikan, ini tidak
+memberatkan — hanya perlu disadari sejak awal, bukan ditemukan belakangan.
+
+Rekomendasi saya **A untuk sesi pertama**, karena memindahkan satu keputusan
+lisensi ke luar jalur kritis menjelang hari-H, dan B sebagai langkah sadar
+setelahnya bila ingin mengikuti hulu.
+
+## 8. Cara membangun bundel
+
+Bundel dibangun **sekali di mesin pengembangan** lalu di-commit sebagai
+`aset/scratch/pemutar.js`, bukan dibangun di dalam image Docker. `package.json`
+dan skrip bangunnya ikut di-commit di `bin/pemutar/` supaya hasilnya bisa
+diulang siapa pun.
+
+Alasannya: menambahkan tahap Node ke `Dockerfile` berarti setiap build image —
+termasuk build jalur web yang tidak ada urusannya dengan Scratch — menanggung
+pemasangan npm. Dokploy membangun langsung dari repo, jadi bundel yang sudah
+ada di repo langsung terpakai. Harganya: satu berkas besar masuk git, dan
+pembaruan bundel dikerjakan manual. Untuk aplikasi yang di-deploy sekali per
+kohort, itu pertukaran yang sepadan.
+
+## 9. Perubahan pada kode yang sudah ada
+
+| Berkas | Perubahan |
+|---|---|
+| `app/config.php` | tambah `KARYA_MAX_SB3_BYTES`, batas entri/rasio zip, `KARYA_MAX_VERSI_SB3`, dua nama cadangan |
+| `index.php` | router bercabang pada `meta.jalur`; rute `/<slug>/unggah`, `/<slug>/karya.sb3`, `/api/unggah`, `/api/terbit-sb3` |
+| `app/storage.php` | tambah jalur berkas `.sb3` dan versinya; `karya_save_text_atomic()` dapat padanan biner |
+| `app/dinding.php` | kartu anak diberi penanda kecil jalur (halaman / game); satu dinding memuat keduanya |
+| `bin/seed.php` | kolom CSV opsional `jalur` (kosong berarti `web`); templat kartu cetak berbeda per jalur — jalur Scratch mencetak alamat `/masuk` dan pengingat menyimpan `.sb3` ke komputer |
+| `Dockerfile` | tambah ekstensi `zip`; `php.ini` untuk `upload_max_filesize=25M` dan `post_max_size=26M`, karena `KARYA_MAX_BODY_BYTES` hanya mengatur badan JSON dan tidak berlaku untuk multipart |
+| baru | `app/sb3.php` (validasi + susun ulang), `app/pemutar_view.php`, `app/unggah_view.php`, `aset/scratch/` |
+
+Tidak berubah: `app/sanitize.php`, `app/foto.php`, `app/editor_view.php`,
+`app/render.php`, `app/ratelimit.php`, `app/security.php`,
+`docker-compose.yml`. Jalur web tidak tersentuh sama sekali.
+
+## 10. Milestone
+
+- **M-S1 — validasi.** `app/sb3.php` + `/api/unggah` + `/<slug>/karya.sb3`.
+  Lolos bila: `game-platformer-pplg.sb3` diterima utuh dan bisa diunduh
+  kembali; dan seluruh berkas uji negatif ditolak — zip dengan entri `../`,
+  zip bomb, `project.json` yang merujuk aset tak ada, SVG berisi `<script>`,
+  zip terenkripsi, berkas non-zip yang dinamai `.sb3`.
+- **M-S2 — pemutar.** Bundel di `aset/scratch/`, halaman `/<slug>`, CSP §6
+  diverifikasi di peramban sungguhan (termasuk pembuktian bahwa
+  `'unsafe-eval'` tidak diperlukan). Lolos bila game berjalan penuh: tokoh
+  berlari, melompat, koin menambah skor, jatuh mengembalikan ke titik mulai —
+  dan versi demo mekanik juga berjalan.
+- **M-S3 — alur anak.** `/<slug>/unggah`, pratinjau sebelum terbit,
+  `/api/terbit-sb3`, panel QR + Bagikan, penanda jalur di dinding karya,
+  `bin/seed.php` berkolom `jalur` dan kartu cetaknya.
+- **M-S4 — deploy dan gladi.** Build dan deploy ke Dokploy, unggah dari
+  komputer lab sungguhan lewat jaringan lab, gladi dengan 3–5 siswa PPLG
+  memakai `.sb3` buatan mereka sendiri, bukan berkas templat.
+
+M-S1 dan M-S2 bisa dikerjakan paralel dengan sisa M5/M6 jalur web karena tidak
+menyentuh berkas yang sama, kecuali `index.php` dan `app/config.php`.
+
+## 11. Pertanyaan terbuka
+
+1. **Lisensi bundel** — pilihan A atau B di §7. Ini menghambat M-S2 dan perlu
+   diputuskan lebih dulu.
+2. **Batas 20 MB** cukup atau tidak, bergantung apakah anak diizinkan merekam
+   suara sendiri di Scratch. Perlu dicek saat gladi.
+3. **Menyunting lanjut dari rumah.** Anak mengunduh `.sb3` dari halamannya,
+   menyunting di rumah, lalu mengunggah ulang. Perlu dipastikan kode edit
+   memang masih berlaku dari luar lab — terkait pertanyaan terbuka §15.3
+   PRD v2 tentang masa berlaku kode edit.
+4. **Suara dan kostum bawaan Scratch.** Anak kemungkinan memakai aset dari
+   pustaka Scratch, yang ikut tersimpan di dalam `.sb3` dan otomatis ikut kita
+   sajikan. Perlu dipastikan sekali bahwa ketentuan pemakaian pustaka Scratch
+   mengizinkan penyajian ulang seperti ini di luar `scratch.mit.edu`. Saya
+   belum memeriksanya.
+5. **Anak yang ikut dua jalur.** Satu slug hanya punya satu jalur. Kalau ada
+   anak yang ikut keduanya, apakah ia mendapat dua slug (`nadia` dan
+   `nadia-game`) atau satu halaman yang memuat keduanya?
+6. **Performa pemutar di komputer lab.** `scratch-render` memakai WebGL;
+   spesifikasi komputer lab dan peramban yang terpasang di sana perlu dicek
+   sebelum M-S4, bukan pada hari-H.
+
+## 12. Referensi
+
+- `docs/PRD-karyaweb-v2.md` — jalur web; §4, §6, §9, §10, §11 adalah pasangan
+  langsung dari §3, §5, §5, §9, §9 dokumen ini.
+- `docs/panduan-infra-pelatihan-web-smp-versi-siswa.md` — Bagian 3, 4, 6, 9,
+  10, 11 tetap berlaku; Bagian 5, 7, 8 dibaca dengan penyesuaian.
+- Dokumen project `claude/file-contoh-scratch-pelatihan-smp.md` — isi berkas
+  templat, hasil verifikasi, dan penyesuaian tata letak level.
+- Berkas templat: `[0] SPMB 2728/Claude outputs/game-platformer-pplg.sb3` dan
+  `game-platformer-pplg-demo-mekanik.sb3`.
