@@ -1,6 +1,11 @@
 # PRD — Jalur Scratch (unggah dan mainkan karya `.sb3`)
 
-Tanggal: 21 September 2026 · Status: **draf, belum diimplementasikan**
+Tanggal: 21 September 2026 (status diperbarui 23 September 2026) · Status:
+**M-S1 selesai** (`app/sb3.php`, `/api/unggah`, `/<slug>/karya.sb3`, gerbang
+`/masuk` tunggal — komit `5fc9887`); **M-S2 dan M-S3 belum dikerjakan**.
+Lisensi bundel pemutar (§7/§11.1) sudah diputuskan: **opsi A (BSD-3)**.
+Rencana implementasi M-S2/M-S3 yang bisa langsung dieksekusi ada di
+`docs/TASK-M-S2-M-S3-jalur-scratch.md`.
 
 Dokumen pendamping `docs/PRD-karyaweb-v2.md`. PRD v2 tetap berlaku penuh untuk
 jalur web dan tidak diubah oleh dokumen ini; yang ditambahkan di sini bersifat
@@ -193,6 +198,13 @@ Rekomendasi saya **A untuk sesi pertama**, karena memindahkan satu keputusan
 lisensi ke luar jalur kritis menjelang hari-H, dan B sebagai langkah sadar
 setelahnya bila ingin mengikuti hulu.
 
+**Keputusan (23 September 2026): opsi A.** Bundel dibangun dari
+`scratch-vm@4.8.115`, `scratch-render@1.2.126`, `scratch-svg-renderer@2.5.46`,
+`scratch-storage@3.0.39` — versi BSD-3-Clause terakhir sebelum masing-masing
+berpindah ke AGPL-3.0-only pada 25 November 2024. Tidak ada kewajiban
+copyleft; tidak perlu `LICENSE` publik atau tautan sumber di kaki halaman
+pemutar. Opsi B tetap terbuka sebagai langkah sadar di kemudian hari.
+
 ## 8. Cara membangun bundel
 
 Bundel dibangun **sekali di mesin pengembangan** lalu di-commit sebagai
@@ -247,8 +259,8 @@ menyentuh berkas yang sama, kecuali `index.php` dan `app/config.php`.
 
 ## 11. Pertanyaan terbuka
 
-1. **Lisensi bundel** — pilihan A atau B di §7. Ini menghambat M-S2 dan perlu
-   diputuskan lebih dulu.
+1. ~~**Lisensi bundel** — pilihan A atau B di §7.~~ Diputuskan 23 September
+   2026: opsi A. Lihat §7.
 2. **Batas 20 MB** cukup atau tidak, bergantung apakah anak diizinkan merekam
    suara sendiri di Scratch. Perlu dicek saat gladi.
 3. **Menyunting lanjut dari rumah.** Anak mengunduh `.sb3` dari halamannya,
