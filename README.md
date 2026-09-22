@@ -21,7 +21,7 @@ sessions — the edit code is sent with every API request). See
 |---|---|
 | [`docs/PRD-karyaweb-v2.md`](docs/PRD-karyaweb-v2.md) | The current spec for Jalur A: routes, data model, API contract, security checklist, milestone status. Start here. |
 | [`docs/PRD-jalur-scratch.md`](docs/PRD-jalur-scratch.md) | Companion spec for Jalur B (`.sb3` upload/player), still in progress. |
-| [`docs/TASK-M-S2-M-S3-jalur-scratch.md`](docs/TASK-M-S2-M-S3-jalur-scratch.md) | Actionable implementation brief for Jalur B's remaining milestones (player page, upload UI) — what's already built vs. what to add, file by file. |
+| [`docs/TASK-M-S2-M-S3-jalur-scratch.md`](docs/TASK-M-S2-M-S3-jalur-scratch.md) | Design notes for Jalur B's player page and upload UI (now implemented — see Status below for what's still unverified). |
 | [`docs/PRD-karyaweb.md`](docs/PRD-karyaweb.md) | v1, superseded by v2 but kept as a record of what M1–M3a actually built. v2 wins on any conflict. |
 | [`docs/panduan-infra-pelatihan-web-smp-versi-siswa.md`](docs/panduan-infra-pelatihan-web-smp-versi-siswa.md) | Infra + facilitator guide: Dokploy/Traefik, deploy mechanics, the session rundown. |
 | [`docs/PHP-404-extended-path-bug.md`](docs/PHP-404-extended-path-bug.md) | One specific local-dev gotcha (phpBro + Windows extended-length paths). |
@@ -35,10 +35,12 @@ sessions — the edit code is sent with every API request). See
   hide switch) are done in code but not yet deployed or verified live —
   see the status header of `docs/PRD-karyaweb-v2.md` for exactly what's
   left.
-- **Jalur B**: M-S1 (`.sb3` validation, `/masuk` routing for both tracks)
-  is done. Upload UI and the in-browser player are not built yet — see
-  `docs/PRD-jalur-scratch.md` §10 and the implementation brief at
-  `docs/TASK-M-S2-M-S3-jalur-scratch.md`.
+- **Jalur B**: M-S1 (`.sb3` validation, `/masuk` routing for both tracks) is
+  done. M-S2 (player page, Scratch VM bundle) and M-S3 (upload UI, publish
+  panel) are done in code and pass a routes/HTTP smoke test, but haven't been
+  exercised in an actual browser yet — no one has confirmed a game plays end
+  to end, or that the player CSP truly doesn't need `'unsafe-eval'`. See the
+  status header of `docs/PRD-jalur-scratch.md` §10 for exactly what's left.
 
 ## Running locally
 

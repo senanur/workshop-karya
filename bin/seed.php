@@ -87,6 +87,11 @@ while (($row = fgetcsv($fh, escape: '')) !== false) {
     $nama = trim((string) ($row[$kolom['nama']] ?? ''));
     $kelas = trim((string) ($row[$kolom['kelas']] ?? ''));
     $sekolah = trim((string) ($row[$kolom['sekolah']] ?? ''));
+    // Jalur Scratch (PRD-jalur-scratch §4.5): kolom opsional "jalur"; kosong
+    // atau bukan "scratch" berarti jalur web (default, karya_meta_jalur() juga
+    // berperilaku begitu untuk meta yang tidak punya kolom ini).
+    $jalur = strtolower(trim((string) ($row[$kolom['jalur'] ?? -1] ?? '')));
+    $jalur = $jalur === 'scratch' ? 'scratch' : 'web';
 
     if ($nama === '' || $sekolah === '') {
         fwrite(STDERR, "Baris {$baris}: nama atau sekolah kosong, dilewati.\n");
@@ -122,18 +127,25 @@ while (($row = fgetcsv($fh, escape: '')) !== false) {
         'sudah_terbit' => false,
         'disembunyikan' => false,
         'jumlah_foto' => 0,
+        'jalur' => $jalur,
     ]);
 
-    $isiAwal = karya_seed_personalisasi_isi($templat['isi'], $nama, $namaDepan, $kelas, $sekolah);
-    karya_save_text_atomic(karya_isi_path($slug), $isiAwal);
-    karya_save_text_atomic(karya_gaya_path($slug), $templat['gaya']);
-    // Assembled and viewable via its QR immediately, but sudah_terbit stays
-    // false — the wall (§11) only shows pages the child chose to publish
-    // themselves, and this doesn't count as that choice.
-    karya_publish_html($slug, karya_render_child_page($slug, $nama, $isiAwal, $templat['gaya']));
+    // Jalur web di-seed dengan halaman contoh yang siap dilihat (isi.html,
+    // gaya.css, index.html). Jalur Scratch TIDAK — gamenya baru ada setelah
+    // anak mengunggah .sb3 lalu menerbitkannya, dan halaman pemutarnya dilayani
+    // dari meta.jalur + karya.sb3, bukan dari templat web.
+    if ($jalur === 'web') {
+        $isiAwal = karya_seed_personalisasi_isi($templat['isi'], $nama, $namaDepan, $kelas, $sekolah);
+        karya_save_text_atomic(karya_isi_path($slug), $isiAwal);
+        karya_save_text_atomic(karya_gaya_path($slug), $templat['gaya']);
+        // Assembled and viewable via its QR immediately, but sudah_terbit stays
+        // false — the wall (§11) only shows pages the child chose to publish
+        // themselves, and this doesn't count as that choice.
+        karya_publish_html($slug, karya_render_child_page($slug, $nama, $isiAwal, $templat['gaya']));
+    }
 
-    $dibuat[$sekolahSlug][] = ['nama' => $nama, 'kelas' => $kelas, 'slug' => $slug, 'kode' => $kode, 'sekolah' => $sekolah];
-    echo "dibuat: {$nama} -> /{$slug}  kode={$kode}  sekolah={$sekolahSlug}\n";
+    $dibuat[$sekolahSlug][] = ['nama' => $nama, 'kelas' => $kelas, 'slug' => $slug, 'kode' => $kode, 'sekolah' => $sekolah, 'jalur' => $jalur];
+    echo "dibuat: {$nama} -> /{$slug}  kode={$kode}  sekolah={$sekolahSlug}  jalur={$jalur}\n";
 }
 
 fclose($fh);
@@ -256,7 +268,7 @@ function karya_seed_personalisasi_isi(string $templat, string $nama, string $nam
 }
 
 /**
- * @param list<array{nama: string, kelas: string, slug: string, kode: string, sekolah: string}> $anak
+ * @param list<array{nama: string, kelas: string, slug: string, kode: string, sekolah: string, jalur: string}> $anak
  */
 function karya_seed_render_kartu(array $anak): string
 {
@@ -270,6 +282,12 @@ function karya_seed_render_kartu(array $anak): string
         $slugHtml = htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8');
         $kodeHtml = htmlspecialchars($a['kode'], ENT_QUOTES, 'UTF-8');
         $alamatJs = htmlspecialchars('https://' . KARYA_DOMAIN_LABEL . '/' . $a['slug'], ENT_QUOTES, 'UTF-8');
+        // Jalur Scratch (PRD-jalur-scratch §4.5): kartu sama (alamat /masuk,
+        // satu pintu untuk kedua jalur) plus satu pengingat agar anak menyimpan
+        // .sb3-nya sebelum keluar dari Scratch.
+        $reminder = ($a['jalur'] ?? 'web') === 'scratch'
+            ? '<div class="ingat">Ingat: simpan .sb3-mu ke komputer sebelum keluar dari Scratch.</div>'
+            : '';
         $kartu .= <<<HTML
 <div class="kartu">
   <div class="qr" data-alamat="{$alamatJs}"></div>
@@ -279,6 +297,7 @@ function karya_seed_render_kartu(array $anak): string
     <div class="baris"><span>Halamanmu</span><b>{$domain}/{$slugHtml}</b></div>
     <div class="baris"><span>Masuk lewat</span><b>{$domain}/masuk</b></div>
     <div class="baris kode"><span>Kode edit</span><b>{$kodeHtml}</b></div>
+    {$reminder}
   </div>
 </div>
 
@@ -307,6 +326,7 @@ HTML;
   .baris span{color:#777}
   .baris b{font-family:Consolas,monospace;word-break:break-all;text-align:right}
   .kode b{font-size:11pt;letter-spacing:.05em}
+  .ingat{margin-top:1mm;font-size:7pt;color:#A61B2B}
 </style>
 </head>
 <body>

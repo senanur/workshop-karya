@@ -86,6 +86,26 @@ function karya_send_child_page_headers(): void
     header('Content-Type: text/html; charset=utf-8');
 }
 
+// Headers for the Scratch player page (PRD-jalur-scratch §6). The VM is an
+// interpreter that never needs eval, and costumes/sounds come from blob:/data:
+// URLs built out of the in-memory .sb3, so the CSP allows those. No inline
+// script here — script-src is 'self' only, so the page's own JS lives in a
+// served file (/aset/scratch/pemutar-halaman.js), not in the HTML.
+function karya_send_pemutar_page_headers(): void
+{
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: no-referrer');
+    header('X-Robots-Tag: noindex');
+    header(
+        "Content-Security-Policy: default-src 'none'; script-src 'self'; "
+        . "style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; "
+        . "media-src 'self' blob: data:; font-src 'self' data:; "
+        . "connect-src 'self'; worker-src 'self' blob:; base-uri 'self'; "
+        . "form-action 'none'; frame-ancestors 'self'"
+    );
+    header('Content-Type: text/html; charset=utf-8');
+}
+
 // Headers for the app's own UI pages (/masuk, /<slug>/edit) — not
 // child-submitted content, so these are allowed their own inline script/style.
 function karya_send_app_page_headers(): void

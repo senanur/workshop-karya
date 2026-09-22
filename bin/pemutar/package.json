@@ -1,0 +1,19 @@
+{
+  "name": "karya-pemutar",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Build script for aset/scratch/pemutar.js — an IIFE player bundle from the BSD-3 versions of the Scratch engine (PRD-jalur-scratch §7/§8).",
+  "type": "commonjs",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  },
+  "dependencies": {
+    "scratch-render": "1.2.126",
+    "scratch-storage": "3.0.39",
+    "scratch-svg-renderer": "2.5.46",
+    "scratch-vm": "4.8.115"
+  }
+}

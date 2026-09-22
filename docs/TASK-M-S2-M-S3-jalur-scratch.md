@@ -1,5 +1,13 @@
 # Tugas implementasi — M-S2 (pemutar) dan M-S3 (alur unggah anak)
 
+**Status (23 September 2026): diimplementasikan oleh opencode
+(`deepseek-v4-flash-0731`) menurut dokumen ini, lalu diperiksa dan diuji di
+level rute/HTTP (server PHP lokal + `curl`) — bukan di peramban sungguhan.**
+Lihat status rinci per milestone di `docs/PRD-jalur-scratch.md` §10. Dokumen
+ini tetap dipertahankan sebagai catatan desain — alasan di balik CSP, alias
+bundel esbuild, dan kontrak API tidak semuanya terlihat dari membaca kode
+saja — bukan lagi sebagai instruksi kerja yang belum dikerjakan.
+
 Tanggal: 23 September 2026. Untuk siapa pun (manusia atau agen) yang
 mengerjakan M-S2/M-S3 dari `docs/PRD-jalur-scratch.md`. Dokumen ini
 merangkum apa yang **sudah ada di repo** dan apa yang **harus dibangun**,

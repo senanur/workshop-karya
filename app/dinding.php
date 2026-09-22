@@ -12,7 +12,7 @@ if (!defined('KARYA_APP')) {
 // only — no JavaScript, so it works even on the oldest phone a parent has.
 
 /**
- * @return list<array{slug: string, nama_depan: string, warna: string}>
+ * @return list<array{slug: string, nama_depan: string, warna: string, jalur: string}>
  */
 function karya_dinding_anak(string $sekolahSlug): array
 {
@@ -37,10 +37,11 @@ function karya_dinding_anak(string $sekolahSlug): array
             continue;
         }
 
-        $anak[] = [
+$anak[] = [
             'slug' => $nama,
             'nama_depan' => karya_nama_depan_untuk_tampilan((string) ($meta['nama'] ?? $nama)),
             'warna' => karya_warna_utama_anak($nama),
+            'jalur' => karya_meta_jalur($meta),
         ];
     }
 
@@ -104,10 +105,14 @@ function karya_render_dinding(string $sekolahSlug): string
         $namaHtml = htmlspecialchars($a['nama_depan'], ENT_QUOTES, 'UTF-8');
         $slugHtml = htmlspecialchars($a['slug'], ENT_QUOTES, 'UTF-8');
         $warnaHtml = htmlspecialchars($a['warna'], ENT_QUOTES, 'UTF-8');
+        // Penanda jalur (PRD-jalur-scratch §9): satu dinding memuat halaman web
+        // dan game Scratch sekaligus, jadi tiap kartu diberi label kecil.
+        $penanda = $a['jalur'] === 'scratch' ? '🎮 game' : '🌐 halaman';
         $kartu .= <<<HTML
 <a class="kartu" href="/{$slugHtml}" style="--warna:{$warnaHtml}">
   <span class="titik"></span>
   <span class="nama">{$namaHtml}</span>
+  <span class="jalur">{$penanda}</span>
 </a>
 
 HTML;
@@ -137,6 +142,7 @@ HTML;
     box-shadow:0 2px 10px rgba(0,0,0,.06);border-top:4px solid var(--warna)}
   .titik{width:14px;height:14px;border-radius:50%;background:var(--warna)}
   .nama{font-weight:600;text-align:center;word-break:break-word}
+  .jalur{font-size:.75rem;color:#777;background:var(--mist);border-radius:999px;padding:2px 8px}
   .kosong{color:#5E5E66}
 </style>
 </head>

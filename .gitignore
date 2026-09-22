@@ -12,3 +12,8 @@ docs/PHP-404-extended-path-bug.md
 # OS/editor cruft
 .DS_Store
 Thumbs.db
+
+# Node dependencies (bin/pemutar/ is a build toolchain; the committed artifact
+# is aset/scratch/pemutar.js, built once on the dev machine — node_modules must
+# never be committed)
+node_modules/

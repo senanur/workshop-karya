@@ -13,6 +13,8 @@ require __DIR__ . '/app/foto.php';
 require __DIR__ . '/app/render.php';
 require __DIR__ . '/app/dinding.php';
 require __DIR__ . '/app/editor_view.php';
+require __DIR__ . '/app/pemutar_view.php';
+require __DIR__ . '/app/unggah_view.php';
 require __DIR__ . '/app/sb3.php';
 
 karya_ensure_dirs();
@@ -71,6 +73,26 @@ if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'edit') {
     }
     karya_send_app_page_headers();
     echo karya_render_editor_page($slug);
+    exit;
+}
+
+// /<slug>/unggah is the Scratch-track counterpart of /<slug>/edit (§3
+// PRD-jalur-scratch). A web-track slug answers 404 rather than redirecting,
+// exactly like /<slug>/edit rejects a Scratch slug — so a misprinted card is
+// caught at the drill, not mid-session.
+if ($method === 'GET' && count($segments) === 2 && $segments[1] === 'unggah') {
+    $slug = $segments[0];
+    if (!karya_slug_is_valid($slug)) {
+        http_response_code(404);
+        exit;
+    }
+    $metaUnggah = karya_load_meta($slug);
+    if ($metaUnggah === null || karya_meta_jalur($metaUnggah) !== 'scratch') {
+        http_response_code(404);
+        exit;
+    }
+    karya_send_app_page_headers();
+    echo karya_render_unggah_page($slug);
     exit;
 }
 
@@ -167,9 +189,13 @@ function karya_handle_show_slug(string $slug, bool $headOnly = false): never
         exit;
     }
 
+    $meta = karya_load_meta($slug);
+    if ($meta !== null && karya_meta_jalur($meta) === 'scratch') {
+        karya_handle_show_pemutar($slug, $meta, $headOnly);
+    }
+
     karya_send_child_page_headers();
 
-    $meta = karya_load_meta($slug);
     $indexPath = karya_index_path($slug);
     // disembunyikan (a facilitator switch, §9) reverts a page to belum-ada.html
     // without touching its data — everything the child wrote stays on disk,
@@ -181,6 +207,28 @@ function karya_handle_show_slug(string $slug, bool $headOnly = false): never
 
     if (!$headOnly) {
         readfile($path);
+    }
+    exit;
+}
+
+// Jalur Scratch (PRD-jalur-scratch §6): /<slug> serves the player page. A
+// hidden child (facilitator switch) or one who hasn't published yet answers
+// with belum-ada.html at HTTP 200, same as the web track — hiding must never
+// leak whether a slug exists.
+function karya_handle_show_pemutar(string $slug, array $meta, bool $headOnly): never
+{
+    if (($meta['disembunyikan'] ?? false) === true || !is_file(karya_sb3_path($slug))) {
+        $path = KARYA_SISTEM_DIR . DIRECTORY_SEPARATOR . 'belum-ada.html';
+        karya_send_child_page_headers();
+        if (!$headOnly) {
+            readfile($path);
+        }
+        exit;
+    }
+
+    karya_send_pemutar_page_headers();
+    if (!$headOnly) {
+        echo karya_render_pemutar_page($slug, $meta);
     }
     exit;
 }

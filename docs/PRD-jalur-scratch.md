@@ -2,10 +2,15 @@
 
 Tanggal: 21 September 2026 (status diperbarui 23 September 2026) · Status:
 **M-S1 selesai** (`app/sb3.php`, `/api/unggah`, `/<slug>/karya.sb3`, gerbang
-`/masuk` tunggal — komit `5fc9887`); **M-S2 dan M-S3 belum dikerjakan**.
+`/masuk` tunggal — komit `5fc9887`). **M-S2 dan M-S3 selesai dari sisi kode,
+belum diverifikasi di peramban sungguhan** — lihat status rinci di §10.
 Lisensi bundel pemutar (§7/§11.1) sudah diputuskan: **opsi A (BSD-3)**.
-Rencana implementasi M-S2/M-S3 yang bisa langsung dieksekusi ada di
-`docs/TASK-M-S2-M-S3-jalur-scratch.md`.
+
+Rencana implementasi M-S2/M-S3 ada di
+`docs/TASK-M-S2-M-S3-jalur-scratch.md`; berkas itu tetap dipertahankan sebagai
+catatan desain meskipun implementasinya sudah ada, karena berisi alasan di
+balik tiap keputusan (CSP, alias bundel, kontrak API) yang tidak semuanya
+terlihat dari membaca kode saja.
 
 Dokumen pendamping `docs/PRD-karyaweb-v2.md`. PRD v2 tetap berlaku penuh untuk
 jalur web dan tidak diubah oleh dokumen ini; yang ditambahkan di sini bersifat
@@ -228,12 +233,13 @@ kohort, itu pertukaran yang sepadan.
 | `app/storage.php` | tambah jalur berkas `.sb3` dan versinya; `karya_save_text_atomic()` dapat padanan biner |
 | `app/dinding.php` | kartu anak diberi penanda kecil jalur (halaman / game); satu dinding memuat keduanya |
 | `bin/seed.php` | kolom CSV opsional `jalur` (kosong berarti `web`); templat kartu cetak berbeda per jalur — jalur Scratch mencetak alamat `/masuk` dan pengingat menyimpan `.sb3` ke komputer |
+| `app/security.php` | tambah `karya_send_pemutar_page_headers()` (CSP §6 khusus halaman pemutar) — fungsi-fungsi lain di berkas ini tidak berubah |
 | `Dockerfile` | tambah ekstensi `zip`; `php.ini` untuk `upload_max_filesize=25M` dan `post_max_size=26M`, karena `KARYA_MAX_BODY_BYTES` hanya mengatur badan JSON dan tidak berlaku untuk multipart |
-| baru | `app/sb3.php` (validasi + susun ulang), `app/pemutar_view.php`, `app/unggah_view.php`, `aset/scratch/` |
+| baru | `app/sb3.php` (validasi + susun ulang), `app/pemutar_view.php`, `app/unggah_view.php`, `aset/scratch/` (bundel + glue halaman), `bin/pemutar/` (skrip bangun bundel) |
 
 Tidak berubah: `app/sanitize.php`, `app/foto.php`, `app/editor_view.php`,
-`app/render.php`, `app/ratelimit.php`, `app/security.php`,
-`docker-compose.yml`. Jalur web tidak tersentuh sama sekali.
+`app/render.php`, `app/ratelimit.php`, `docker-compose.yml`. Jalur web tidak
+tersentuh sama sekali.
 
 ## 10. Milestone
 
@@ -247,12 +253,36 @@ Tidak berubah: `app/sanitize.php`, `app/foto.php`, `app/editor_view.php`,
   `'unsafe-eval'` tidak diperlukan). Lolos bila game berjalan penuh: tokoh
   berlari, melompat, koin menambah skor, jatuh mengembalikan ke titik mulai —
   dan versi demo mekanik juga berjalan.
+
+  **Selesai dari sisi kode (23 September 2026), belum lolos kriteria di
+  atas.** `bin/pemutar/` membangun `aset/scratch/pemutar.js` (5,7 MB) dari
+  versi BSD-3 yang diputuskan di §7 — bundel itu sudah benar-benar dibangun
+  dan di-commit, bukan kerangka kosong. `app/pemutar_view.php` +
+  `karya_send_pemutar_page_headers()` diverifikasi lewat server PHP lokal:
+  rute `/<slug>` merender halaman pemutar dengan header CSP **persis** teks
+  di §6, `/aset/scratch/pemutar.js` tersaji dengan `Content-Type` yang benar,
+  dan `/<slug>/karya.sb3` tersaji dengan `Content-Disposition: attachment`.
+  **Belum diverifikasi:** game sungguhan berjalan di kanvas WebGL (bendera
+  hijau, lompat, koin, jatuh) dan pembuktian empiris bahwa `'unsafe-eval'`
+  memang tidak diperlukan — keduanya tidak bisa dicek lewat `curl`/PHP CLI,
+  perlu peramban sungguhan.
 - **M-S3 — alur anak.** `/<slug>/unggah`, pratinjau sebelum terbit,
   `/api/terbit-sb3`, panel QR + Bagikan, penanda jalur di dinding karya,
   `bin/seed.php` berkolom `jalur` dan kartu cetaknya.
+
+  **Selesai dari sisi kode (23 September 2026), belum lolos kriteria di
+  atas.** `app/unggah_view.php` ada dan lolos uji rute (`/<slug>/unggah`
+  merender untuk jalur `scratch`, 404 untuk jalur `web` — sama seperti
+  `/<slug>/edit` sebaliknya). Penanda jalur di dinding karya dan kolom
+  `jalur` di `bin/seed.php` sudah ada dan terverifikasi tampil benar.
+  **Belum diverifikasi:** alur penuh di peramban sungguhan — pilih/seret
+  `.sb3`, pratinjau lokal benar-benar memutar, `/api/unggah` menerima dan
+  mengizinkan Terbitkan, `/api/terbit-sb3` menerbitkan, panel QR+Bagikan
+  tampil dan berfungsi.
 - **M-S4 — deploy dan gladi.** Build dan deploy ke Dokploy, unggah dari
   komputer lab sungguhan lewat jaringan lab, gladi dengan 3–5 siswa PPLG
-  memakai `.sb3` buatan mereka sendiri, bukan berkas templat.
+  memakai `.sb3` buatan mereka sendiri, bukan berkas templat. Belum dimulai —
+  menunggu M-S2/M-S3 lolos verifikasi peramban di atas.
 
 M-S1 dan M-S2 bisa dikerjakan paralel dengan sisa M5/M6 jalur web karena tidak
 menyentuh berkas yang sama, kecuali `index.php` dan `app/config.php`.
