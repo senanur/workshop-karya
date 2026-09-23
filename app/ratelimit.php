@@ -140,6 +140,67 @@ function karya_ratelimit_check_global(): bool
     return $allowed;
 }
 
+// Guards POST /admin/seed's token check — stricter than the per-child kode
+// window (5/15min vs 10/5min) because a leaked or guessed admin token lets
+// someone create arbitrary children across every school, not just take over
+// one slug. Global (one log file), not per-slug, since there's only one token.
+function karya_ratelimit_check_admin_wrong_attempts(): bool
+{
+    $path = KARYA_RATELIMIT_DIR . DIRECTORY_SEPARATOR . 'admin-token.log';
+    $fh = fopen($path, 'c+');
+    if ($fh === false) {
+        return true;
+    }
+
+    flock($fh, LOCK_SH);
+    $now = microtime(true);
+    $windowStart = $now - 900.0;
+    $count = 0;
+    rewind($fh);
+    while (($line = fgets($fh)) !== false) {
+        if ((float) trim($line) >= $windowStart) {
+            $count++;
+        }
+    }
+    flock($fh, LOCK_UN);
+    fclose($fh);
+
+    return $count < 5;
+}
+
+function karya_ratelimit_record_admin_wrong_attempt(): void
+{
+    $path = KARYA_RATELIMIT_DIR . DIRECTORY_SEPARATOR . 'admin-token.log';
+    $fh = fopen($path, 'c+');
+    if ($fh === false) {
+        return;
+    }
+
+    flock($fh, LOCK_EX);
+    $now = microtime(true);
+    $windowStart = $now - 900.0;
+
+    $lines = [];
+    rewind($fh);
+    while (($line = fgets($fh)) !== false) {
+        $ts = (float) trim($line);
+        if ($ts >= $windowStart) {
+            $lines[] = $ts;
+        }
+    }
+    $lines[] = $now;
+
+    ftruncate($fh, 0);
+    rewind($fh);
+    foreach ($lines as $ts) {
+        fwrite($fh, sprintf("%.6f\n", $ts));
+    }
+    fflush($fh);
+
+    flock($fh, LOCK_UN);
+    fclose($fh);
+}
+
 // Scratch uploads are allowed at most 20 per minute globally, on their own
 // counter — a .sb3 is far bigger than a web publish, so mixing it into the
 // web's 60/min global counter (and vice versa) would let either track starve

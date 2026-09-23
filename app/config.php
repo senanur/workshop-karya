@@ -47,6 +47,11 @@ define('KARYA_MAX_SB3_ENTRI_UKURAN',20 * 1024 * 1024);
 define('KARYA_MAX_PROJECT_JSON_BYTES',5 * 1024 * 1024);
 define('KARYA_MAX_VERSI_SB3',2);
 
+// POST /admin/seed (facilitator-only, token-gated — see app/seed.php and
+// index.php's karya_handle_admin_seed()). A CSV of names/classes/schools is
+// tiny; 2 MB is generous headroom for even a few hundred rows.
+define('KARYA_MAX_SEED_CSV_BYTES', 2 * 1024 * 1024);
+
 // Reserved slugs that must never resolve as a child page — they collide with
 // real routes of this app or with other services on the shared lab domain.
 // v1's list is kept as-is (even 'bikin', whose route is gone in v2) plus the

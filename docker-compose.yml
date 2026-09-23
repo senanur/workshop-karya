@@ -7,6 +7,10 @@ services:
       # back to its dev-time default (a sibling folder outside any volume)
       # and every publish would vanish on container recreate.
       - KARYA_DATA_DIR=/data/karya
+      # POST /admin/seed (app/seed.php) — set this in Dokploy's Environment
+      # panel for the app, not here. Left unset (the ${...:-} default),
+      # the endpoint refuses every request as if it doesn't exist at all.
+      - KARYA_ADMIN_TOKEN=${KARYA_ADMIN_TOKEN:-}
     volumes:
       - /data/karya:/data/karya
     networks:

@@ -266,6 +266,50 @@ Aturan slug tetap: nama depan huruf kecil, kembar menjadi `andi2`, daftar nama
 cadangan §4 ditolak otomatis. Skrip aman dijalankan ulang: anak yang sudah ada
 dilewati, tidak ditimpa.
 
+**`POST /admin/seed` (ditambahkan 23 September 2026).** Logika di atas
+sekarang ada di `app/seed.php` (`karya_seed_proses_csv()`), dipakai bersama
+oleh `bin/seed.php` (CLI) dan rute HTTP ini — supaya fasilitator yang tidak
+punya akses SSH/`docker exec` ke server tetap bisa mengimpor CSV. Alasannya
+konkret: image produksi `php:8.4-cli-alpine` tidak punya `bash`, cuma `sh`,
+dan banyak panel (termasuk terminal bawaan Dokploy) mengasumsikan `bash` —
+lihat `docs/panduan-infra-pelatihan-web-smp-versi-siswa.md` Bagian 10 untuk
+ceritanya.
+
+Dijaga token, bukan akun — sejalan dengan filosofi aplikasi ini yang memang
+sengaja tanpa sistem akun:
+
+- Token dari environment variable `KARYA_ADMIN_TOKEN` (diatur lewat panel
+  Environment Dokploy, **tidak pernah** di-commit). Kosong berarti rute ini
+  mati total — menjawab 404 seperti alamat yang tidak dikenal, bukan "aktif
+  tanpa kata sandi".
+- Dibandingkan dengan `hash_equals()`, dan percobaan token salah dibatasi
+  5 kali/15 menit secara global (`karya_ratelimit_check_admin_wrong_attempts()`
+  di `app/ratelimit.php`) — lebih ketat dari batas kode edit anak (10/5 menit
+  per slug) karena token ini bisa membuat anak di sekolah mana pun, bukan
+  cuma mengambil alih satu slug.
+- `multipart/form-data`, field `csv` (maksimum `KARYA_MAX_SEED_CSV_BYTES` =
+  2 MB), header `Authorization: Bearer <token>`.
+- Responsnya satu `.zip` berisi `ringkasan.txt` (log yang sama persis dengan
+  keluaran CLI) plus `kartu-<sekolah>.html` dan `kredensial-<sekolah>.csv`
+  untuk tiap sekolah yang tersentuh di jalankan itu — satu kali bolak-balik,
+  tidak perlu `scp` kedua untuk mengambil folder `_keluaran/`.
+
+Contoh pemakaian:
+
+```bash
+curl -X POST https://karya.labpplg.web.id/admin/seed \
+  -H "Authorization: Bearer <token>" \
+  -F "csv=@siswa.csv" \
+  -o hasil-seed.zip
+```
+
+Diuji lokal (bukan di produksi): token kosong/salah, rate limit token salah,
+CSV valid campuran jalur `web`+`scratch`, jalankan ulang CSV yang sama
+(idempoten, sama seperti CLI), dan regresi `bin/seed.php` serta
+`bin/uji-sb3.php` tidak berubah perilakunya. Belum diuji: dari `curl`
+sungguhan di produksi dengan `KARYA_ADMIN_TOKEN` yang sungguhan diset di
+Dokploy.
+
 ## 11. Dinding karya
 
 `/smp-<nama-sekolah>` menampilkan kartu tiap anak dari sekolah itu yang

@@ -16,6 +16,7 @@ require __DIR__ . '/app/editor_view.php';
 require __DIR__ . '/app/pemutar_view.php';
 require __DIR__ . '/app/unggah_view.php';
 require __DIR__ . '/app/sb3.php';
+require __DIR__ . '/app/seed.php';
 
 karya_ensure_dirs();
 
@@ -129,6 +130,14 @@ if ($method === 'POST' && $path === '/api/unggah') {
 
 if ($method === 'POST' && $path === '/api/terbit-sb3') {
     karya_handle_terbit_sb3();
+}
+
+// --- facilitator-only: import a roster CSV without server/SSH access ------
+// (app/seed.php's karya_seed_proses_csv(), token-gated — see its handler
+// below for why this exists and how the token is checked.)
+
+if ($method === 'POST' && $path === '/admin/seed') {
+    karya_handle_admin_seed();
 }
 
 // --- a child's published Scratch file: /<slug>/karya.sb3 ------------------
@@ -614,4 +623,86 @@ function karya_handle_terbit_sb3(): never
         'url' => '/' . $slug,
         'versi' => karya_sb3_versi_ids($slug),
     ]);
+}
+
+// POST /admin/seed — lets a facilitator import a roster CSV over HTTP,
+// without server/SSH access or fighting docker exec's shell (the runtime
+// image is php:8.4-cli-alpine, which has no bash — only sh). Gated by
+// KARYA_ADMIN_TOKEN, an environment variable that is never committed; unset
+// means the feature is off, not "on with an empty password" — this route
+// then answers exactly like any other unknown path, so its existence isn't
+// even observable from outside until someone deliberately configures it.
+//
+// multipart/form-data: field "csv", header "Authorization: Bearer <token>".
+// Response is a .zip: ringkasan.txt plus every kartu-*.html and
+// kredensial-*.csv this run produced — one round trip, unlike the CLI form
+// (bin/seed.php) where the _keluaran/ output needs a second fetch off the
+// server.
+function karya_handle_admin_seed(): never
+{
+    $token = (string) getenv('KARYA_ADMIN_TOKEN');
+    if ($token === '') {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Not found';
+        exit;
+    }
+
+    if (!karya_ratelimit_check_admin_wrong_attempts()) {
+        karya_json_error(429, 'Terlalu banyak percobaan token salah. Coba lagi nanti.');
+    }
+
+    $authHeader = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+    $diberikan = str_starts_with($authHeader, 'Bearer ') ? substr($authHeader, 7) : '';
+
+    if ($diberikan === '' || !hash_equals($token, $diberikan)) {
+        karya_ratelimit_record_admin_wrong_attempt();
+        karya_json_error(401, 'Token salah atau tidak diberikan.');
+    }
+
+    $berkas = $_FILES['csv'] ?? null;
+    if (!is_array($berkas)) {
+        karya_json_error(422, 'Tidak ada berkas CSV yang dikirim (field "csv").');
+    }
+
+    $galat = $berkas['error'] ?? UPLOAD_ERR_NO_FILE;
+    if ($galat === UPLOAD_ERR_INI_SIZE || $galat === UPLOAD_ERR_FORM_SIZE) {
+        karya_json_error(413, 'Berkas CSV terlalu besar.');
+    }
+    if ($galat !== UPLOAD_ERR_OK) {
+        karya_json_error(422, 'Berkas CSV gagal terkirim. Coba lagi.');
+    }
+    $tmp = (string) ($berkas['tmp_name'] ?? '');
+    if ($tmp === '' || !is_uploaded_file($tmp)) {
+        karya_json_error(422, 'Berkas CSV gagal terkirim. Coba lagi.');
+    }
+    if ((int) ($berkas['size'] ?? 0) > KARYA_MAX_SEED_CSV_BYTES) {
+        karya_json_error(413, 'Berkas CSV terlalu besar.');
+    }
+
+    try {
+        $hasil = karya_seed_proses_csv($tmp);
+    } catch (RuntimeException $e) {
+        karya_json_error(422, $e->getMessage());
+    }
+
+    $zipPath = KARYA_RATELIMIT_DIR . DIRECTORY_SEPARATOR . '.seed-' . bin2hex(random_bytes(4)) . '.zip';
+    $zip = new ZipArchive();
+    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        karya_json_error(500, 'Gagal menyusun hasil. Coba lagi.');
+    }
+    $zip->addFromString('ringkasan.txt', implode("\n", $hasil['log']) . "\n");
+    foreach ($hasil['keluaran'] as $sekolahSlug => $berkasSekolah) {
+        $zip->addFile($berkasSekolah['kartu'], "kartu-{$sekolahSlug}.html");
+        $zip->addFile($berkasSekolah['kredensial'], "kredensial-{$sekolahSlug}.csv");
+    }
+    $zip->close();
+
+    header('Content-Type: application/zip');
+    header('X-Content-Type-Options: nosniff');
+    header('Content-Disposition: attachment; filename="hasil-seed-' . gmdate('Ymd-His') . '.zip"');
+    header('Content-Length: ' . (string) filesize($zipPath));
+    readfile($zipPath);
+    @unlink($zipPath);
+    exit;
 }
