@@ -365,19 +365,21 @@ tersentuh sama sekali.
   `/api/terbit-sb3`, panel QR + Bagikan, penanda jalur di dinding karya,
   `bin/seed.php` berkolom `jalur` dan kartu cetaknya.
 
-  **Selesai dari sisi kode (23 September 2026), belum lolos kriteria di
-  atas.** `app/unggah_view.php` ada dan lolos uji rute (`/<slug>/unggah`
-  merender untuk jalur `scratch`, 404 untuk jalur `web` — sama seperti
-  `/<slug>/edit` sebaliknya). Penanda jalur di dinding karya dan kolom
-  `jalur` di `bin/seed.php` sudah ada dan terverifikasi tampil benar.
-  **Belum diverifikasi:** alur penuh di peramban sungguhan — pilih/seret
-  `.sb3`, pratinjau lokal benar-benar memutar, `/api/unggah` menerima dan
-  mengizinkan Terbitkan, `/api/terbit-sb3` menerbitkan, panel QR+Bagikan
-  tampil dan berfungsi.
+  **Selesai dan terverifikasi (23 September 2026).** Dikonfirmasi langsung
+  oleh Bapak di peramban sungguhan: pilih/seret `.sb3`, pratinjau lokal
+  memutar, `/api/unggah` menerima dan mengizinkan Terbitkan, `/api/terbit-sb3`
+  menerbitkan, dan panel QR + Bagikan tampil. Sama seperti M-S2, tidak
+  terverifikasi item per item: kode salah/gate `/api/buka`, unggah ulang
+  sebelum terbit, dan rate limit belum masing-masing dipastikan lewat
+  peramban — bukan penghalang M-S4, layak dicek sekali lagi saat gladi.
 - **M-S4 — deploy dan gladi.** Build dan deploy ke Dokploy, unggah dari
   komputer lab sungguhan lewat jaringan lab, gladi dengan 3–5 siswa PPLG
-  memakai `.sb3` buatan mereka sendiri, bukan berkas templat. Belum dimulai —
-  menunggu M-S2/M-S3 lolos verifikasi peramban di atas.
+  memakai `.sb3` buatan mereka sendiri, bukan berkas templat. M-S2 dan M-S3
+  sudah lolos verifikasi peramban, jadi ini boleh dimulai — lihat §14 untuk
+  siapa mengerjakan apa: bagian yang bisa disiapkan dari repo (audit
+  `Dockerfile`/`.dockerignore`, checklist pra-deploy) sudah dikerjakan;
+  memicu deploy di panel Dokploy, uji dari jaringan lab, dan gladi bersama
+  siswa PPLG sepenuhnya di tangan Bapak.
 
 M-S1 dan M-S2 bisa dikerjakan paralel dengan sisa M5/M6 jalur web karena tidak
 menyentuh berkas yang sama, kecuali `index.php` dan `app/config.php`.
@@ -443,3 +445,46 @@ sekarang.
   untuk manfaat yang belum tentu perlu — D-pad tetap sudah menutupi kasus
   yang sejauh ini muncul (panah + spasi). Kerjakan ini kalau, setelah gladi
   sungguhan, ternyata banyak anak memang memakai tombol di luar itu.
+
+## 14. Audit pra-deploy M-S4 (23 September 2026)
+
+M-S2 dan M-S3 lolos verifikasi peramban (§10), jadi M-S4 boleh dimulai. Yang
+bisa diperiksa dari repo sudah dikerjakan; sisanya perlu tangan Bapak
+langsung — tidak ada akses ke panel Dokploy, jaringan lab, atau siswa PPLG
+dari sini.
+
+**Sudah diperiksa dan diperbaiki:**
+
+- `.dockerignore` tidak mengecualikan `node_modules/` — celah nyata (walau
+  kemungkinan tak pernah kena kalau Dokploy membangun dari git clone bersih,
+  bukan direktori kerja lokal): `bin/pemutar/node_modules/` berisi ratusan
+  paket Node yang tidak ada urusannya masuk ke image PHP. Ditambahkan sebagai
+  jaring pengaman, sejalan dengan `.gitignore`.
+- `Dockerfile` ditinjau ulang terhadap kebutuhan jalur Scratch: ekstensi
+  `zip` dan `gd`, batas `upload_max_filesize=25M`/`post_max_size=26M`,
+  `COPY app/`/`COPY aset/`/`COPY bin/` mencakup seluruh berkas baru
+  (`app/pemutar_view.php`, `app/unggah_view.php`, `app/sb3.php`,
+  `aset/scratch/pemutar.js` + `pemutar-halaman.js`) — semuanya sudah benar
+  sejak M-S1, tidak perlu perubahan. Tidak ada tahap Node/npm ditambahkan,
+  sesuai keputusan §8 (bundel dibangun sekali di mesin pengembangan,
+  di-commit apa adanya).
+- **Belum bisa diperiksa dari sini:** tidak ada `docker` CLI di lingkungan
+  ini, jadi `Dockerfile` hanya ditinjau statis, bukan benar-benar dibangun.
+  Build sungguhan pertama untuk jalur Scratch tetap terjadi saat Dokploy
+  memprosesnya — tonton log build itu, jangan asumsikan lolos begitu saja.
+
+**Checklist yang tersisa, di tangan Bapak:**
+
+1. Pastikan Dokploy menarik dari remote `github` (bukan `origin`/Bitbucket
+   yang basi — lihat `AGENT.md`), lalu picu/pantau deploy-nya.
+2. Uji unggah `.sb3` dari komputer lab sungguhan lewat jaringan lab —
+   bukan dari luar jaringan itu. Latensi/bandwidth lab bisa saja beda dari
+   uji yang sudah dilakukan, terutama untuk unggahan mendekati batas 20 MB.
+3. Jalankan `bin/seed.php` sungguhan dengan CSV berisi baris `jalur=scratch`
+   untuk siswa PPLG yang ikut gladi, supaya mereka pakai kartu+kode asli,
+   bukan data uji.
+4. Gladi dengan 3–5 siswa PPLG memakai `.sb3` **buatan mereka sendiri**,
+   bukan `game-platformer-pplg.sb3` — ini uji sungguhan pertama untuk variasi
+   blok/aset di luar satu berkas templat yang sejauh ini dipakai.
+5. Setelah gladi, perbarui status M-S4 di §10 dengan hasil sungguhan
+   (lolos/tidak per butir), sama seperti M-S2/M-S3 di atas.

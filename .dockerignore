@@ -3,3 +3,11 @@ docs/
 data/
 workshop-spmb-data/
 *.md
+
+# bin/pemutar/ is a dev-machine build toolchain (PRD-jalur-scratch §8): its
+# output, aset/scratch/pemutar.js, is committed and already covered by
+# COPY aset/ below. node_modules/ is gitignored and never in a clean clone,
+# but this is a free safety net if the image is ever built from a local
+# working copy that still has it on disk — several hundred MB that has no
+# business in a PHP runtime image.
+node_modules/
