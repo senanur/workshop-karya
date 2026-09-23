@@ -53,6 +53,22 @@
         if (Pemutar) Pemutar.layar_penuh();
     });
 
+    // Tombol sentuh (PRD-jalur-scratch §6): panah+spasi tetap, ditampilkan
+    // lewat CSS hanya pada layar sentuh. Lewat window.Pemutar.tombol(), jalur
+    // yang sama persis dengan papan ketik sungguhan (vm.postIOData()) — bukan
+    // KeyboardEvent tiruan.
+    var tombolSentuh = document.querySelectorAll('[data-tombol]');
+    for (var i = 0; i < tombolSentuh.length; i++) {
+        (function (el) {
+            var key = el.getAttribute('data-tombol');
+            el.addEventListener('pointerdown', function (e) { e.preventDefault(); if (Pemutar) Pemutar.tombol(key, true); });
+            var lepas = function (e) { if (e) e.preventDefault(); if (Pemutar) Pemutar.tombol(key, false); };
+            el.addEventListener('pointerup', lepas);
+            el.addEventListener('pointercancel', lepas);
+            el.addEventListener('pointerleave', lepas);
+        })(tombolSentuh[i]);
+    }
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', muatProyek);
     } else {

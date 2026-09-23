@@ -145,7 +145,12 @@ await esbuild.build({
         'scratch-vm': path.join(__dirname, 'node_modules', 'scratch-vm', 'src', 'index.js'),
         'scratch-render': path.join(__dirname, 'node_modules', 'scratch-render', 'src', 'index.js'),
         'scratch-svg-renderer': path.join(__dirname, 'node_modules', 'scratch-svg-renderer', 'src', 'index.js'),
-        'scratch-storage': path.join(__dirname, 'node_modules', 'scratch-storage', 'src', 'index.ts')
+        'scratch-storage': path.join(__dirname, 'node_modules', 'scratch-storage', 'src', 'index.ts'),
+        // scratch-vm depends on scratch-audio (^1.0.6, resolves to the same
+        // BSD-3 line pinned in package.json) for vm.attachAudioEngine() and on
+        // scratch-svg-renderer's BitmapAdapter for vm.attachV2BitmapAdapter() —
+        // both aliased to source for the same reason as the packages above.
+        'scratch-audio': path.join(__dirname, 'node_modules', 'scratch-audio', 'src', 'index.js')
     },
     minify: true,
     logLevel: 'info',
@@ -154,7 +159,7 @@ await esbuild.build({
 
 const size = fs.statSync(outfile).size;
 console.log(`\npemutar.js ditulis: ${outfile} (${(size / 1024 / 1024).toFixed(2)} MB)`);
-console.log(`versi: vm=${pkgVersion('scratch-vm')} render=${pkgVersion('scratch-render')} svg=${pkgVersion('scratch-svg-renderer')} storage=${pkgVersion('scratch-storage')}`);
+console.log(`versi: vm=${pkgVersion('scratch-vm')} render=${pkgVersion('scratch-render')} svg=${pkgVersion('scratch-svg-renderer')} storage=${pkgVersion('scratch-storage')} audio=${pkgVersion('scratch-audio')}`);
 
 function pkgVersion(name) {
     const p = path.join(__dirname, 'node_modules', name, 'package.json');

@@ -143,6 +143,19 @@ Pemutar memuat `/<slug>/karya.sb3` sebagai `ArrayBuffer` lalu menyerahkannya ke
 VM; seluruh aset sudah ada di dalam berkas itu, jadi tidak ada satu pun
 permintaan keluar dari jaringan lab.
 
+**Tombol sentuh (ditambahkan 23 September 2026, dari uji peramban di HP).**
+`scratch-vm` tidak mendengarkan DOM sendiri — papan ketik dan mouse sungguhan
+didorong masuk lewat `vm.postIOData()` (lihat perbaikan M-S2 di §10), yang
+berarti di HP tanpa papan ketik game tidak bisa dikendalikan sama sekali.
+Halaman pemutar menambahkan D-pad tetap (panah atas/bawah/kiri/kanan + tombol
+spasi) yang hanya tampil lewat CSS `@media (pointer:coarse)` — di PC berpointer
+halus (mouse) tombolnya tersembunyi karena papan ketik sungguhan sudah cukup.
+Setiap tombol memanggil `Pemutar.tombol(key, isDown)` (diekspos dari
+`bin/pemutar/src/glue.js`), yang lewat jalur `vm.postIOData()` yang sama persis
+dengan papan ketik sungguhan — bukan `KeyboardEvent` tiruan. Tombolnya **tetap
+panah+spasi**, bukan hasil pindai `project.json` per game — lihat §13 untuk
+gagasan tombol kustom yang sengaja belum dikerjakan.
+
 CSP halaman pemutar berbeda dari CSP halaman web di §9 PRD v2 dan perlu
 diverifikasi empiris sebelum dianggap final:
 
@@ -162,11 +175,14 @@ ulang, bukan dilonggarkan diam-diam.
 
 ## 7. Bundel pemutar dan lisensinya
 
-Yang dibundel hanya `scratch-vm`, `scratch-render`, `scratch-svg-renderer`, dan
-`scratch-storage` — **bukan** `scratch-gui`. Kita hanya memutar, tidak
-menyediakan editor, sehingga seluruh antarmuka Scratch tidak ikut.
+Yang dibundel hanya `scratch-vm`, `scratch-render`, `scratch-svg-renderer`,
+`scratch-storage`, dan `scratch-audio` — **bukan** `scratch-gui`. Kita hanya
+memutar, tidak menyediakan editor, sehingga seluruh antarmuka Scratch tidak
+ikut. (`scratch-audio` ditambahkan 23 September 2026 setelah uji peramban
+menunjukkan game berjalan bisu dan tanpa kostum raster — lihat §10 M-S2.)
 
-Temuan lisensi, diperiksa 21 Sep 2026 di registry npm:
+Temuan lisensi, diperiksa 21 Sep 2026 di registry npm (`scratch-audio`
+ditambah 23 Sep 2026 dengan cara yang sama):
 
 | Paket | Versi terbaru | Lisensi sekarang | Versi BSD-3 terakhir |
 |---|---|---|---|
@@ -174,6 +190,12 @@ Temuan lisensi, diperiksa 21 Sep 2026 di registry npm:
 | `scratch-render` | 2.2.84 | AGPL-3.0-only | 1.2.126 |
 | `scratch-svg-renderer` | 3.1.19 | AGPL-3.0-only | 2.5.46 |
 | `scratch-storage` | 6.2.1 | AGPL-3.0-only | 3.0.39 |
+| `scratch-audio` | 2.0.268 | AGPL-3.0-only | 1.0.332 |
+
+`scratch-audio` relicense ke AGPL terjadi pada lompatan versi mayor
+`1.0.332` → `2.0.0`, dipublikasikan 25 November 2024 — tanggal yang sama
+persis dengan keempat paket lain, jadi ini tetap satu relicense terkoordinasi,
+bukan jadwal terpisah.
 
 Seluruh paket berpindah dari BSD-3-Clause ke AGPL-3.0-only pada rilis mayor
 25 November 2024. Konsekuensinya nyata: menyajikan bundel AGPL ke peramban
@@ -205,10 +227,11 @@ setelahnya bila ingin mengikuti hulu.
 
 **Keputusan (23 September 2026): opsi A.** Bundel dibangun dari
 `scratch-vm@4.8.115`, `scratch-render@1.2.126`, `scratch-svg-renderer@2.5.46`,
-`scratch-storage@3.0.39` — versi BSD-3-Clause terakhir sebelum masing-masing
-berpindah ke AGPL-3.0-only pada 25 November 2024. Tidak ada kewajiban
-copyleft; tidak perlu `LICENSE` publik atau tautan sumber di kaki halaman
-pemutar. Opsi B tetap terbuka sebagai langkah sadar di kemudian hari.
+`scratch-storage@3.0.39`, `scratch-audio@1.0.332` — versi BSD-3-Clause
+terakhir sebelum masing-masing berpindah ke AGPL-3.0-only pada 25 November
+2024. Tidak ada kewajiban copyleft; tidak perlu `LICENSE` publik atau tautan
+sumber di kaki halaman pemutar. Opsi B tetap terbuka sebagai langkah sadar di
+kemudian hari.
 
 ## 8. Cara membangun bundel
 
@@ -266,6 +289,62 @@ tersentuh sama sekali.
   hijau, lompat, koin, jatuh) dan pembuktian empiris bahwa `'unsafe-eval'`
   memang tidak diperlukan — keduanya tidak bisa dicek lewat `curl`/PHP CLI,
   perlu peramban sungguhan.
+
+  **Bug ditemukan + diperbaiki (23 September 2026, dari uji peramban
+  pertama).** Game memuat (`vm.loadProject()` berhasil) tapi tampil tanpa
+  kostum raster dan tanpa suara — konsol menunjukkan `Error loading bitmap
+  image: No V2 Bitmap adapter present.` dan `No audio engine present; cannot
+  load sound asset`. Sebabnya `bin/pemutar/src/glue.js` memanggil
+  `vm.attachStorage()` dan `vm.attachRenderer()` tapi tidak pernah
+  `vm.attachV2BitmapAdapter()` maupun `vm.attachAudioEngine()` — dua langkah
+  yang scratch-gui selalu lakukan tapi TASK-M-S2-M-S3 tidak menyebutkannya
+  secara eksplisit, jadi terlewat. Diperbaiki dengan menambah `scratch-audio`
+  ke bundel (§7 di atas) dan memanggil `vm.attachV2BitmapAdapter(new
+  BitmapAdapter())` (dari `scratch-svg-renderer`, sudah ada di bundel) +
+  `vm.attachAudioEngine(new AudioEngine())` di `glue.js`. Diverifikasi ulang
+  dengan me-reproduksi `game.sb3` sungguhan langsung lewat kode sumber
+  `scratch-vm`/`scratch-storage` di Node (bukan lewat peramban): sebelum
+  perbaikan pesan "No V2 Bitmap adapter present" muncul persis seperti di
+  konsol peramban; sesudahnya pesan itu hilang. `scratch-audio` tidak bisa
+  diuji lewat Node sama sekali (perlu Web Audio API sungguhan), jadi bagian
+  suara masih menunggu konfirmasi di peramban.
+
+  **Bug kedua ditemukan + diperbaiki (23 September 2026, uji peramban
+  putaran kedua, setelah kostum/suara di atas beres).** Game tampil dan
+  bendera hijau jalan, tapi tombol panah kiri/kanan tidak menggerakkan
+  apa pun — tidak ada galat di konsol sama sekali, karena secara teknis
+  tidak ada yang salah: `scratch-vm` tidak pernah mendengarkan DOM sendiri.
+  Setiap tekanan tombol/klik harus didorong masuk lewat `vm.postIOData()`,
+  persis seperti yang dilakukan `scratch-gui`, dan `glue.js` tidak
+  melakukannya sama sekali — celah yang sama sifatnya dengan bitmap
+  adapter/audio engine di atas (tidak disebutkan eksplisit di TASK, jadi
+  terlewat). Diperbaiki dengan menambah `pasangPapanKetik()` (keydown/keyup
+  di `document`, dijaga `sedangMengetik()` supaya tombol panah yang diketik
+  di kolom kode/nama pada halaman unggah tidak dibajak game) dan
+  `pasangMouse()` (mousemove/mousedown pada kanvas, mouseup di `window`) di
+  `glue.js`, memanggil `vm.postIOData('keyboard', …)` /
+  `vm.postIOData('mouse', …)` dengan bentuk data yang dicocokkan langsung ke
+  `src/io/keyboard.js` dan `src/io/mouse.js` di `scratch-vm`. Kedua fungsi ini
+  tidak bisa diuji lewat Node (perlu DOM/peramban sungguhan), jadi masih
+  menunggu konfirmasi bahwa tokoh benar-benar bisa dikendalikan.
+
+  Peringatan konsol lain yang dilaporkan saat uji ini **bukan bug**: "The
+  AudioContext was not allowed to start" adalah kebijakan autoplay peramban
+  yang normal (`scratch-audio` sudah menangani ini sendiri lewat paket
+  `startaudiocontext`, pulih begitu ada interaksi pertama seperti klik Bendera
+  hijau); "Unchecked runtime.lastError: Could not establish connection" adalah
+  noise dari ekstensi peramban yang terpasang, tidak ada satu pun kode kita
+  yang memanggil `chrome.runtime`; "Canvas2D:… willReadFrequently" adalah
+  saran performa dari pustaka Scratch sendiri, bukan galat.
+
+  **Temuan ketiga + diperbaiki (23 September 2026, uji di HP setelah PC
+  lolos).** Game berjalan penuh di PC tapi tidak bisa dikendalikan sama
+  sekali di HP — bukan bug, tapi keterbatasan yang diketahui sejak awal:
+  layar sentuh tidak punya papan ketik. Ditambahkan D-pad tetap (panah +
+  spasi) yang hanya tampil di perangkat berlayar sentuh — detail teknisnya
+  di §6. Keputusan sadar: **D-pad tetap panah+spasi, bukan tombol yang
+  dipindai dari `project.json` per game** — lihat §13 untuk gagasan itu,
+  sengaja ditunda sebagai opsional.
 - **M-S3 — alur anak.** `/<slug>/unggah`, pratinjau sebelum terbit,
   `/api/terbit-sb3`, panel QR + Bagikan, penanda jalur di dinding karya,
   `bin/seed.php` berkolom `jalur` dan kartu cetaknya.
@@ -319,3 +398,32 @@ menyentuh berkas yang sama, kecuali `index.php` dan `app/config.php`.
   templat, hasil verifikasi, dan penyesuaian tata letak level.
 - Berkas templat: `[0] SPMB 2728/Claude outputs/game-platformer-pplg.sb3` dan
   `game-platformer-pplg-demo-mekanik.sb3`.
+
+## 13. Backlog (opsional, belum dikerjakan)
+
+Gagasan yang sengaja **ditunda**, bukan bagian dari kriteria lolos M-S2/M-S3
+manapun. Dicatat di sini supaya tidak hilang, bukan supaya dikerjakan
+sekarang.
+
+- **Tombol sentuh kustom per game, dipindai dari `project.json`.** D-pad di
+  §6 sekarang tetap: panah + spasi, untuk semua game, apa pun isinya. Kalau
+  seorang anak menambahkan mekanik yang dikendalikan tombol lain (mis. `W`
+  untuk lompat, atau tombol angka), D-pad tetap ini tidak akan
+  menampilkannya, dan anak itu — atau siapa pun yang main lewat HP — tidak
+  bisa mengendalikan mekanik tersebut sama sekali.
+
+  Gagasannya: `project.json` sudah diuraikan di server saat unggah
+  (`app/sb3.php`, untuk validasi §5). Blok `event_whenkeypressed` di dalamnya
+  punya field yang menyebut tombol persis mana yang dipakai game itu. Kalau
+  daftar tombol itu diekstrak saat unggah dan disimpan di `meta.json` (mis.
+  `meta.tombol = ['left arrow', 'right arrow', 'space']`), halaman pemutar
+  bisa merender **persis tombol yang game itu pakai** — bukan D-pad generik —
+  dan anak bisa mengatur ulang tata letaknya sendiri (drag posisi, ukuran)
+  kalau itu juga mau didukung.
+
+  Kenapa ditunda: kompleksitas nyata (menguraikan pohon blok bukan sekadar
+  membaca satu field, memetakan nama tombol Scratch ke label/ikon yang masuk
+  akal untuk anak SMP, UI pengaturan tata letak yang butuh disimpan per game)
+  untuk manfaat yang belum tentu perlu — D-pad tetap sudah menutupi kasus
+  yang sejauh ini muncul (panah + spasi). Kerjakan ini kalau, setelah gladi
+  sungguhan, ternyata banyak anak memang memakai tombol di luar itu.

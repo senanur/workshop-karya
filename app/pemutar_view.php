@@ -64,6 +64,24 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;gap:14px;paddi
   .stage-wrap{width:100%}
   .bar .url{display:none}
 }
+/* Tombol sentuh (PRD-jalur-scratch §6): tetap panah+spasi tetap, bukan hasil
+   pindai project.json — lihat §13 untuk gagasan tombol kustom per game.
+   Disembunyikan pada perangkat berpointer halus (mouse) karena PC sudah
+   punya papan ketik sungguhan; muncul hanya pada layar sentuh. */
+.sentuh{display:none;width:100%;max-width:480px;justify-content:space-between;
+  align-items:flex-end;gap:16px;margin-top:2px}
+@media (pointer:coarse){.sentuh{display:flex}}
+.tp{touch-action:none;-webkit-user-select:none;user-select:none;border:none;
+  border-radius:12px;background:rgba(30,36,64,.72);color:#fff;font-size:1.2rem;
+  display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tp:active{background:var(--cherry)}
+.dpad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:5px}
+.tp-atas{grid-column:2;grid-row:1}
+.tp-kiri{grid-column:1;grid-row:2}
+.tp-kanan{grid-column:3;grid-row:2}
+.tp-bawah{grid-column:2;grid-row:3}
+.tp-aksi{width:80px;height:80px;border-radius:999px;font-size:1rem;font-weight:700;
+  background:rgba(166,27,43,.85)}
 </style>
 </head>
 <body>
@@ -80,6 +98,15 @@ main{flex:1;display:flex;flex-direction:column;align-items:center;gap:14px;paddi
     <button class="hijau" id="hijau" type="button">▶ Bendera hijau</button>
     <button class="berhenti" id="berhenti" type="button">■ Berhenti</button>
     <button id="layar-penuh" type="button">⛶ Layar penuh</button>
+  </div>
+  <div class="sentuh" aria-label="Tombol arah untuk layar sentuh">
+    <div class="dpad">
+      <button type="button" class="tp tp-atas" data-tombol="ArrowUp" aria-label="Atas">▲</button>
+      <button type="button" class="tp tp-kiri" data-tombol="ArrowLeft" aria-label="Kiri">◀</button>
+      <button type="button" class="tp tp-kanan" data-tombol="ArrowRight" aria-label="Kanan">▶</button>
+      <button type="button" class="tp tp-bawah" data-tombol="ArrowDown" aria-label="Bawah">▼</button>
+    </div>
+    <button type="button" class="tp tp-aksi" data-tombol=" " aria-label="Spasi">SPASI</button>
   </div>
   <p class="pesan" id="pesan" hidden></p>
 </main>
