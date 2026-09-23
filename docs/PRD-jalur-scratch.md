@@ -2,8 +2,9 @@
 
 Tanggal: 21 September 2026 (status diperbarui 23 September 2026) · Status:
 **M-S1 selesai** (`app/sb3.php`, `/api/unggah`, `/<slug>/karya.sb3`, gerbang
-`/masuk` tunggal — komit `5fc9887`). **M-S2 dan M-S3 selesai dari sisi kode,
-belum diverifikasi di peramban sungguhan** — lihat status rinci di §10.
+`/masuk` tunggal — komit `5fc9887`). **M-S2 selesai dan terverifikasi di
+peramban sungguhan** (PC dan HP) setelah tiga putaran perbaikan — lihat §10.
+**M-S3 selesai dari sisi kode, belum diverifikasi di peramban sungguhan**.
 Lisensi bundel pemutar (§7/§11.1) sudah diputuskan: **opsi A (BSD-3)**.
 
 Rencana implementasi M-S2/M-S3 ada di
@@ -277,8 +278,9 @@ tersentuh sama sekali.
   berlari, melompat, koin menambah skor, jatuh mengembalikan ke titik mulai —
   dan versi demo mekanik juga berjalan.
 
-  **Selesai dari sisi kode (23 September 2026), belum lolos kriteria di
-  atas.** `bin/pemutar/` membangun `aset/scratch/pemutar.js` (5,7 MB) dari
+  **Selesai dan terverifikasi (23 September 2026)** — lihat catatan
+  perbaikan dan konfirmasi akhir di bawah. `bin/pemutar/` membangun
+  `aset/scratch/pemutar.js` (5,7 MB) dari
   versi BSD-3 yang diputuskan di §7 — bundel itu sudah benar-benar dibangun
   dan di-commit, bukan kerangka kosong. `app/pemutar_view.php` +
   `karya_send_pemutar_page_headers()` diverifikasi lewat server PHP lokal:
@@ -345,6 +347,20 @@ tersentuh sama sekali.
   di §6. Keputusan sadar: **D-pad tetap panah+spasi, bukan tombol yang
   dipindai dari `project.json` per game** — lihat §13 untuk gagasan itu,
   sengaja ditunda sebagai opsional.
+
+  **M-S2 dinyatakan lolos (23 September 2026).** Dikonfirmasi langsung oleh
+  Bapak setelah ketiga perbaikan di atas: game berjalan dan bisa dikendalikan
+  penuh baik di PC (papan ketik sungguhan) maupun di HP (D-pad sentuh).
+  `'unsafe-eval'` terbukti tidak diperlukan secara empiris — CSP §6 tidak
+  pernah menyertakannya di sepanjang tiga putaran uji ini, dan game tetap
+  berjalan penuh; kalau VM benar-benar butuh `eval`, peramban akan menolak
+  menjalankan skripnya dan game tidak akan bisa dimainkan sama sekali, bukan
+  hanya sebagian. Yang belum diuji satu per satu secara eksplisit: skor koin,
+  jatuh mengembalikan ke titik mulai, dan berkas
+  `game-platformer-pplg-demo-mekanik.sb3` terpisah — kemungkinan besar sudah
+  ikut berfungsi (mekanik yang sama, VM yang sama), tapi belum ada konfirmasi
+  tertulis butir-per-butir. Bukan penghalang M-S4, tapi layak dicek sekali
+  lagi saat gladi bersama siswa PPLG.
 - **M-S3 — alur anak.** `/<slug>/unggah`, pratinjau sebelum terbit,
   `/api/terbit-sb3`, panel QR + Bagikan, penanda jalur di dinding karya,
   `bin/seed.php` berkolom `jalur` dan kartu cetaknya.

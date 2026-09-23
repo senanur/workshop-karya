@@ -36,11 +36,12 @@ sessions — the edit code is sent with every API request). See
   see the status header of `docs/PRD-karyaweb-v2.md` for exactly what's
   left.
 - **Jalur B**: M-S1 (`.sb3` validation, `/masuk` routing for both tracks) is
-  done. M-S2 (player page, Scratch VM bundle) and M-S3 (upload UI, publish
-  panel) are done in code and pass a routes/HTTP smoke test, but haven't been
-  exercised in an actual browser yet — no one has confirmed a game plays end
-  to end, or that the player CSP truly doesn't need `'unsafe-eval'`. See the
-  status header of `docs/PRD-jalur-scratch.md` §10 for exactly what's left.
+  done. M-S2 (player page, Scratch VM bundle) is done and verified — a real
+  game plays end to end on both PC and phone, confirmed after three rounds of
+  browser-testing fixes (bitmap/audio engine wiring, keyboard/mouse input,
+  a touch D-pad). M-S3 (upload UI, publish panel) is done in code and passes
+  a routes/HTTP smoke test but hasn't been exercised in a browser yet. See
+  `docs/PRD-jalur-scratch.md` §10 for exactly what's left.
 
 ## Running locally
 
