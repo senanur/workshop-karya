@@ -365,13 +365,57 @@ tersentuh sama sekali.
   `/api/terbit-sb3`, panel QR + Bagikan, penanda jalur di dinding karya,
   `bin/seed.php` berkolom `jalur` dan kartu cetaknya.
 
-  **Selesai dan terverifikasi (23 September 2026).** Dikonfirmasi langsung
-  oleh Bapak di peramban sungguhan: pilih/seret `.sb3`, pratinjau lokal
+  **Selesai dan terverifikasi (23 September 2026) — tapi verifikasi pertama
+  itu ternyata cuma di peramban lokal (`127.0.0.1:3000`), bukan di
+  produksi.** Dikonfirmasi Bapak: pilih/seret `.sb3`, pratinjau lokal
   memutar, `/api/unggah` menerima dan mengizinkan Terbitkan, `/api/terbit-sb3`
-  menerbitkan, dan panel QR + Bagikan tampil. Sama seperti M-S2, tidak
-  terverifikasi item per item: kode salah/gate `/api/buka`, unggah ulang
-  sebelum terbit, dan rate limit belum masing-masing dipastikan lewat
-  peramban — bukan penghalang M-S4, layak dicek sekali lagi saat gladi.
+  menerbitkan, panel QR + Bagikan tampil. Catatan lama di sini bilang "rate
+  limit belum dipastikan lewat peramban" — dan persis itu yang lalu ketahuan
+  rusak begitu benar-benar dicoba di produksi (di bawah).
+
+  **Dua bug produksi ditemukan + diperbaiki (23 September 2026, saat
+  persiapan M-S4).** Keduanya baru ketahuan sekarang karena PHP lokal punya
+  ekstensi `zip` yang berfungsi normal, jadi tidak ada yang pernah benar-benar
+  memaksa jalur `.sb3` lewat container produksi sampai hari ini:
+
+  1. **`ZipArchive` tidak ada di produksi sama sekali.** `Dockerfile` menghapus
+     `libzip-dev` di baris `apk del` tanpa pernah memasang `libzip` (versi
+     runtime, tanpa akhiran `-dev`) secara terpisah — beda dari blok `gd` di
+     atasnya yang sudah benar. `docker-php-ext-install zip` tetap sukses saat
+     *build* (headernya masih ada), tapi `zip.so` gagal `dlopen()` diam-diam
+     saat *runtime* begitu `libzip-dev` dihapus, sehingga `new ZipArchive()`
+     melempar `Class "ZipArchive" not found`. Ketahuan dari log PHP produksi
+     saat menguji `POST /admin/seed` (fitur terpisah, lihat PRD v2 §10), bukan
+     dari `/api/unggah` — tapi bug yang sama persis membuat **seluruh jalur
+     unggah `.sb3` anak sungguhan tidak pernah bisa berfungsi di produksi**
+     sampai diperbaiki. Perbaikan: tambah `apk add --no-cache libzip` sebelum
+     `apk del`, menyamakan pola dengan blok `gd`. Deploy ulang, dikonfirmasi:
+     unggah `.sb3` sungguhan sukses di produksi.
+  2. **`/api/unggah` dan `/api/terbit-sb3` berbagi satu kunci batas laju per
+     slug (10 detik).** Begitu produksi bisa diunggah, alur normal
+     "unggah → tunggu pesan diterima → klik Terbitkan" — yang memang
+     dirancang terjadi dalam hitungan detik — langsung kena 429 "Tunggu
+     beberapa detik sebelum menerbitkan lagi", karena panggilan unggah barusan
+     sudah menyalakan jam 10 detik yang sama yang dipakai panggilan terbit.
+     Perbaikan: kunci berkas rate-limit dipisah per aksi
+     (`karya_ratelimit_check_slug($slug . ':unggah', 10.0)` dan
+     `...':terbit', 10.0)`) alih-alih berbagi `$slug` polos — batas 10
+     detik untuk masing-masing aksi tetap berlaku sendiri-sendiri, cuma
+     tidak saling memblokir lagi. Diuji lokal: unggah lalu langsung terbit
+     tanpa jeda sekarang 200/200; mengulang aksi yang sama dengan cepat
+     tetap 429 seperti seharusnya.
+
+  Satu pesan konsol lain yang dilaporkan saat uji ini **bukan bug**:
+  `beacon.min.js` dari `static.cloudflareinsights.com` ditolak CSP halaman
+  unggah — itu skrip analitik yang disisipkan otomatis oleh Cloudflare,
+  ditolak karena CSP kita memang ketat (`script-src 'self'`). Tidak
+  memengaruhi fungsi apa pun; kalau mau dihilangkan dari konsol, itu berarti
+  mematikan fitur analitik Cloudflare untuk domain ini, bukan mengubah kode
+  di sini.
+
+  Sisa yang belum diverifikasi item per item: kode salah/gate `/api/buka`
+  dan unggah ulang sebelum terbit — bukan penghalang M-S4, layak dicek sekali
+  lagi saat gladi.
 - **M-S4 — deploy dan gladi.** Build dan deploy ke Dokploy, unggah dari
   komputer lab sungguhan lewat jaringan lab, gladi dengan 3–5 siswa PPLG
   memakai `.sb3` buatan mereka sendiri, bukan berkas templat. M-S2 dan M-S3

@@ -518,7 +518,10 @@ function karya_handle_unggah_sb3(): never
 
         karya_json_error(429, 'Server sedang sibuk, coba lagi sebentar lagi.');
     }
-    if (!karya_ratelimit_check_slug($slug, 10.0)) {
+    // ':unggah' keeps this on its own lock, separate from terbit-sb3's below —
+    // sharing one meant a normal upload-then-Terbitkan click (seconds apart,
+    // by design) tripped the cooldown the upload itself had just set.
+    if (!karya_ratelimit_check_slug($slug . ':unggah', 10.0)) {
         karya_json_error(429, 'Tunggu beberapa detik sebelum mengunggah lagi.');
     }
 
@@ -592,7 +595,9 @@ function karya_handle_terbit_sb3(): never
 
         karya_json_error(429, 'Server sedang sibuk, coba lagi sebentar lagi.');
     }
-    if (!karya_ratelimit_check_slug($slug, 10.0)) {
+    // ':terbit' — own lock, see the comment on the matching check in
+    // karya_handle_unggah_sb3().
+    if (!karya_ratelimit_check_slug($slug . ':terbit', 10.0)) {
 
         karya_json_error(429, 'Tunggu beberapa detik sebelum menerbitkan lagi.');
     }
