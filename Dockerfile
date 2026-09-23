@@ -10,13 +10,23 @@ RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS libjpeg-turbo-dev libp
     && apk del .build-deps
 
 # zip is what opens and reassembles .sb3 files (Jalur Scratch, PRD-jalur-scratch
-# §5). KARYA_MAX_BODY_BYTES only bounds JSON bodies; multipart uploads are
-# bounded by PHP's own upload_max_filesize/post_max_size instead — a .sb3 can be
-# up to 20 MB, so upload_max_filesize=25M leaves headroom for the multipart
+# §5) and what POST /admin/seed (app/seed.php) zips its output with.
+# KARYA_MAX_BODY_BYTES only bounds JSON bodies; multipart uploads are bounded
+# by PHP's own upload_max_filesize/post_max_size instead — a .sb3 can be up to
+# 20 MB, so upload_max_filesize=25M leaves headroom for the multipart
 # overhead,and post_max_size=26M for the rest of the form fields.
+#
+# libzip (the runtime .so, no -dev suffix) has to be re-added before deleting
+# the build deps below — same as gd's libjpeg-turbo/libpng/libwebp above.
+# Without it, docker-php-ext-install still succeeds (libzip-dev is present at
+# build time) but zip.so silently fails to dlopen() at runtime once
+# libzip-dev is gone, and `new ZipArchive()` throws "Class not found" — this
+# shipped broken for a while before anything happened to exercise it against
+# the real container (found 23 Sep 2026, via POST /admin/seed's PHP log).
 
 RUN apk add --no-cache --virtual .build-deps-php $PHPIZE_DEPS libzip-dev \
     && docker-php-ext-install -j"$(nproc)" zip \
+    && apk add --no-cache libzip \
     && apk del .build-deps-php \
     && printf 'upload_max_filesize=25M\npost_max_size=26M\n' > /usr/local/etc/php/conf.d/uploads.ini
 
