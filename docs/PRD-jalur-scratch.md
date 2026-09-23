@@ -1,11 +1,13 @@
 # PRD — Jalur Scratch (unggah dan mainkan karya `.sb3`)
 
 Tanggal: 21 September 2026 (status diperbarui 23 September 2026) · Status:
-**M-S1 selesai** (`app/sb3.php`, `/api/unggah`, `/<slug>/karya.sb3`, gerbang
-`/masuk` tunggal — komit `5fc9887`). **M-S2 selesai dan terverifikasi di
-peramban sungguhan** (PC dan HP) setelah tiga putaran perbaikan — lihat §10.
-**M-S3 selesai dari sisi kode, belum diverifikasi di peramban sungguhan**.
-Lisensi bundel pemutar (§7/§11.1) sudah diputuskan: **opsi A (BSD-3)**.
+**M-S1, M-S2, dan M-S3 selesai dan terverifikasi** — lihat §10 untuk
+rincian tiap milestone dan bug yang ditemukan+diperbaiki sepanjang jalan
+(termasuk dua bug produksi yang baru ketahuan saat persiapan M-S4: `zip`
+yang tidak berfungsi di container produksi, dan `/api/unggah`+
+`/api/terbit-sb3` berbagi satu kunci pembatas laju). M-S4 (deploy + gladi)
+sedang berjalan. Lisensi bundel pemutar (§7/§11.1) sudah diputuskan:
+**opsi A (BSD-3)**.
 
 Rencana implementasi M-S2/M-S3 ada di
 `docs/TASK-M-S2-M-S3-jalur-scratch.md`; berkas itu tetap dipertahankan sebagai
@@ -412,6 +414,11 @@ tersentuh sama sekali.
   memengaruhi fungsi apa pun; kalau mau dihilangkan dari konsol, itu berarti
   mematikan fitur analitik Cloudflare untuk domain ini, bukan mengubah kode
   di sini.
+
+  **Dikonfirmasi ulang di produksi sungguhan (23 September 2026)** setelah
+  kedua perbaikan di atas: unggah `.sb3` lalu langsung Terbitkan berhasil di
+  `karya.labpplg.web.id`, bukan cuma di `127.0.0.1:3000` lagi. Ini verifikasi
+  produksi pertama yang benar-benar menembus jalur `.sb3` secara penuh.
 
   Sisa yang belum diverifikasi item per item: kode salah/gate `/api/buka`
   dan unggah ulang sebelum terbit — bukan penghalang M-S4, layak dicek sekali

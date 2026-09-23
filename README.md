@@ -36,12 +36,15 @@ sessions — the edit code is sent with every API request). See
   see the status header of `docs/PRD-karyaweb-v2.md` for exactly what's
   left.
 - **Jalur B**: M-S1 (`.sb3` validation), M-S2 (player page, Scratch VM
-  bundle), and M-S3 (upload UI, publish panel) are all done and verified in
-  a real browser — a real game plays end to end on both PC and phone, and
-  the full upload → preview → publish → QR flow works. M-S4 (deploy to
-  Dokploy, lab-network test, dry run with PPLG students) is next — see
-  `docs/PRD-jalur-scratch.md` §14 for the pre-deploy audit and what's left,
-  all of which needs hands-on access this session doesn't have.
+  bundle), and M-S3 (upload UI, publish panel) are all done and verified —
+  including in real production now, not just locally: a real game plays end
+  to end on PC and phone, and the full upload → preview → publish → QR flow
+  works on `karya.labpplg.web.id`. Getting there surfaced two real production
+  bugs invisible to local testing (`ZipArchive` missing at runtime in the
+  Docker image; `/api/unggah` and `/api/terbit-sb3` sharing one rate-limit
+  lock) — both fixed, see `docs/PRD-jalur-scratch.md` §10. M-S4 (lab-network
+  test, dry run with PPLG students) is what's left — needs hands-on access
+  this session doesn't have.
 
 ## Running locally
 
