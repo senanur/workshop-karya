@@ -133,6 +133,14 @@ async function mulai(canvas, arrayBuffer) {
     // visibly failing.
     vm.attachV2BitmapAdapter(new BitmapAdapter());
     vm.attachAudioEngine(new AudioEngine());
+    // scratch-vm steps scripts at 60/s by default and only drops to the
+    // standard Scratch 3 rate of 30/s once told to — scratch-gui does this
+    // itself on every project it runs, so a game authored/tested there (the
+    // lab editor) assumes 30/s. Skipping this doubles the effective speed of
+    // any script that moves things per-tick without its own wait block —
+    // found 1 October 2026, after the first real workshop: every uploaded
+    // game played back about 2x too fast.
+    vm.setCompatibilityMode(true);
 
     state.vm = vm;
     state.renderer = renderer;

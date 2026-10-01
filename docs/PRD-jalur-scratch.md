@@ -432,6 +432,27 @@ tersentuh sama sekali.
   memicu deploy di panel Dokploy, uji dari jaringan lab, dan gladi bersama
   siswa PPLG sepenuhnya di tangan Bapak.
 
+  **Gladi/sesi pelatihan pertama selesai (1 Oktober 2026) — berjalan baik.**
+  Satu hal yang ketahuan: game yang diunggah berjalan kira-kira 2× lebih
+  cepat dibanding saat anak mengujinya di editor Scratch lab. Sebabnya
+  `bin/pemutar/src/glue.js` tidak pernah memanggil `vm.setCompatibilityMode
+  (true)` — `scratch-vm` men-step skrip 60 kali/detik secara bawaan
+  (`Runtime.THREAD_STEP_INTERVAL`), dan baru turun ke laju standar Scratch 3
+  (30/detik, `THREAD_STEP_INTERVAL_COMPATIBILITY`) kalau diberi tahu.
+  `scratch-gui` (editor di lab, dan scratch.mit.edu) melakukan ini sendiri
+  untuk setiap proyek; pemutar kita tidak — celah yang sama persis sifatnya
+  dengan bitmap adapter/audio engine/papan ketik: sesuatu yang biasanya
+  `scratch-gui` urus otomatis, tidak disebutkan eksplisit di TASK, jadi
+  terlewat lagi.
+
+  Diperbaiki dengan satu baris di `glue.js`, di sebelah `vm.attach*()`
+  lainnya: `vm.setCompatibilityMode(true)`. Diverifikasi tanpa peramban,
+  langsung lewat kode sumber `scratch-vm` di Node: sebelum perbaikan
+  `runtime.currentStepTime` = 16,67 ms (1000/60); sesudahnya 33,33 ms
+  (1000/30) — persis laju yang diharapkan. Belum dikonfirmasi di peramban
+  sungguhan bahwa kecepatan gameplay sekarang cocok dengan di lab — itu
+  langkah berikutnya sebelum sesi berikutnya.
+
 M-S1 dan M-S2 bisa dikerjakan paralel dengan sisa M5/M6 jalur web karena tidak
 menyentuh berkas yang sama, kecuali `index.php` dan `app/config.php`.
 
